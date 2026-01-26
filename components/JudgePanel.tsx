@@ -13,7 +13,9 @@ import {
   RefreshCw, 
   FileDown, 
   ScrollText, 
-  Bird 
+  Bird,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 // Corrección de rutas: Aseguramos el uso de rutas relativas locales
@@ -192,13 +194,32 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
   };
 
   const togglePublic = async (id: string) => {
-    const updatedChamps = state.championships.map(c => ({ ...c, isPublic: c.id === id }));
-    const target = updatedChamps.find(c => c.id === id);
-    onUpdateState({ championships: updatedChamps, publicChampionshipId: id });
+    // Si ya es público, lo quitamos. Si no lo es, lo ponemos y quitamos los demás.
+    const isCurrentlyPublic = state.publicChampionshipId === id;
+    const newPublicId = isCurrentlyPublic ? null : id;
+    
+    const updatedChamps = state.championships.map(c => ({ 
+      ...c, 
+      isPublic: c.id === newPublicId 
+    }));
+
+    onUpdateState({ championships: updatedChamps, publicChampionshipId: newPublicId });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
-    if (target) {
-      await syncWithSupabase(target);
-      if (supabase) await supabase.from('championships').update({ isPublic: false }).neq('id', id);
+
+    if (supabase) {
+      setSyncing(true);
+      try {
+        // Desactivamos todos en Supabase
+        await supabase.from('championships').update({ isPublic: false }).neq('id', '00000000-0000-0000-0000-000000000000');
+        // Si activamos uno nuevo, lo marcamos
+        if (newPublicId) {
+          await supabase.from('championships').update({ isPublic: true }).eq('id', newPublicId);
+        }
+      } catch (e) {
+        setLastError("Error actualizando visibilidad en la nube");
+      } finally {
+        setSyncing(false);
+      }
     }
   };
 
@@ -336,17 +357,28 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
               <Clock className="w-4 h-4" /> Historial de Eventos
             </h3>
             <div className="space-y-3">
-              {state.championships.map(champ => (
-                <div key={champ.id} className={`group p-4 rounded-2xl cursor-pointer border-2 transition-all ${state.selectedChampionshipId === champ.id ? 'bg-falcon-brown border-falcon-brown text-white shadow-xl' : 'border-transparent bg-gray-50 hover:bg-white hover:border-falcon-brown/20'}`} onClick={() => onUpdateState({ selectedChampionshipId: champ.id })}>
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1 min-w-0"><span className="font-black text-xs uppercase block truncate">{champ.name}</span></div>
-                    <button onClick={(e) => { e.stopPropagation(); deleteChamp(champ.id); }} className={`p-1.5 rounded-lg transition-colors ${state.selectedChampionshipId === champ.id ? 'hover:bg-white/10 text-white' : 'text-red-300 hover:text-red-500 hover:bg-red-50'}`}><Trash2 className="w-3.5 h-3.5"/></button>
+              {state.championships.map(champ => {
+                const isCurrentlyPublic = state.publicChampionshipId === champ.id;
+                return (
+                  <div key={champ.id} className={`group p-4 rounded-2xl cursor-pointer border-2 transition-all ${state.selectedChampionshipId === champ.id ? 'bg-falcon-brown border-falcon-brown text-white shadow-xl' : 'border-transparent bg-gray-50 hover:bg-white hover:border-falcon-brown/20'}`} onClick={() => onUpdateState({ selectedChampionshipId: champ.id })}>
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1 min-w-0"><span className="font-black text-xs uppercase block truncate">{champ.name}</span></div>
+                      <button onClick={(e) => { e.stopPropagation(); deleteChamp(champ.id); }} className={`p-1.5 rounded-lg transition-colors ${state.selectedChampionshipId === champ.id ? 'hover:bg-white/10 text-white' : 'text-red-300 hover:text-red-500 hover:bg-red-50'}`}><Trash2 className="w-3.5 h-3.5"/></button>
+                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); togglePublic(champ.id); }} 
+                      className={`w-full text-[9px] py-2.5 rounded-xl border-2 uppercase font-black tracking-widest transition-all flex items-center justify-center gap-2 ${
+                        isCurrentlyPublic 
+                          ? (state.selectedChampionshipId === champ.id ? 'bg-white text-field-green border-white shadow-md' : 'bg-field-green text-white border-field-green shadow-md') 
+                          : (state.selectedChampionshipId === champ.id ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-200 text-gray-400 hover:border-field-green hover:text-field-green')
+                      }`}
+                    >
+                      {isCurrentlyPublic ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      {isCurrentlyPublic ? "Retirar de Público" : "Activar Resultados Públicos"}
+                    </button>
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); togglePublic(champ.id); }} className={`w-full text-[9px] py-2.5 rounded-xl border-2 uppercase font-black tracking-widest transition-all ${champ.isPublic ? (state.selectedChampionshipId === champ.id ? 'bg-white text-field-green border-white' : 'bg-field-green text-white border-field-green shadow-md') : (state.selectedChampionshipId === champ.id ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-200 text-gray-400 hover:border-field-green hover:text-field-green')}`}>
-                    {champ.isPublic ? "Ya en Público" : "Activar Resultados Públicos"}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
