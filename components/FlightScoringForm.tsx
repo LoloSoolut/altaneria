@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { FlightData, CapturaType } from '../types.ts';
 import { SCORING, CAPTURA_LABELS } from '../constants.ts';
-import { Save, AlertTriangle, Check, ShieldAlert, Zap, ArrowUp, Timer, MapPin } from 'lucide-react';
+import { Save, ShieldAlert, Zap, ArrowUp, Timer, MapPin, BadgeCheck, Minus, Plus } from 'lucide-react';
 
 interface Props {
   flight: FlightData;
@@ -31,12 +31,19 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
   const calculatedTotal = alturaPts + servicioPts + picadoPts + remontadaPts + capturaPts + totalBon - totalPen;
   const isDisqualified = Object.values(formData.disqualifications).some(v => v);
 
+  const formatTimeDisplay = (seconds: number) => {
+    if (!seconds) return "0 min 0s";
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins} min ${secs}s`;
+  };
+
   useEffect(() => {
     setFormData(prev => ({ ...prev, totalPoints: isDisqualified ? 0 : Number(calculatedTotal.toFixed(2)) }));
   }, [calculatedTotal, isDisqualified]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 max-h-[75vh] overflow-y-auto px-1">
       <div className="grid md:grid-cols-2 gap-4">
         <div className="space-y-1">
           <label className="text-[10px] uppercase font-bold text-gray-400 ml-1">Nombre del Halcón</label>
@@ -62,12 +69,12 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
         <div className="space-y-1">
           <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><Timer className="w-3 h-3"/> Tiempo (s)</label>
           <input type="number" value={formData.tiempoVuelo || ''} onChange={e => setFormData({...formData, tiempoVuelo: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-xl font-bold text-lg" />
-          <p className="text-[9px] text-gray-400">+{remontadaPts.toFixed(2)} pts Remont.</p>
+          <p className="text-[10px] font-black text-field-green mt-1">{formatTimeDisplay(formData.tiempoVuelo)}</p>
         </div>
         <div className="space-y-1">
           <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><MapPin className="w-3 h-3"/> Distancia (m)</label>
           <input type="number" value={formData.distanciaServicio || ''} onChange={e => setFormData({...formData, distanciaServicio: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-xl font-bold text-lg" />
-          <p className="text-[9px] text-gray-400">+{servicioPts.toFixed(2)} pts Posición</p>
+          <p className="text-[9px] text-gray-400">+{servicioPts.toFixed(2)} pts Pos.</p>
         </div>
       </div>
 
@@ -98,29 +105,39 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
             <div className="space-y-3">
               <label className="flex items-center justify-between gap-2 text-xs font-bold text-red-700 p-2 hover:bg-white/50 rounded-lg cursor-pointer">
                 <div className="flex items-center gap-2"><input type="checkbox" className="w-4 h-4" checked={formData.penSenueloEncarnado} onChange={e => setFormData({...formData, penSenueloEncarnado: e.target.checked})} /> Señuelo encarnado</div>
-                <span>-4 pts</span>
+                <span className="flex items-center gap-1"><Minus className="w-3 h-3"/> 4.0</span>
               </label>
               <label className="flex items-center justify-between gap-2 text-xs font-bold text-red-700 p-2 hover:bg-white/50 rounded-lg cursor-pointer">
                 <div className="flex items-center gap-2"><input type="checkbox" className="w-4 h-4" checked={formData.penEnsenarSenuelo} onChange={e => setFormData({...formData, penEnsenarSenuelo: e.target.checked})} /> Enseñar señuelo</div>
-                <span>-6 pts</span>
+                <span className="flex items-center gap-1"><Minus className="w-3 h-3"/> 6.0</span>
               </label>
               <label className="flex items-center justify-between gap-2 text-xs font-bold text-red-700 p-2 hover:bg-white/50 rounded-lg cursor-pointer">
                 <div className="flex items-center gap-2"><input type="checkbox" className="w-4 h-4" checked={formData.penSueltaObligada} onChange={e => setFormData({...formData, penSueltaObligada: e.target.checked})} /> Suelta obligada</div>
-                <span>-10 pts</span>
+                <span className="flex items-center gap-1"><Minus className="w-3 h-3"/> 10.0</span>
               </label>
             </div>
           </div>
-          
-          <div className="bg-gray-900 text-white p-6 rounded-2xl space-y-3 shadow-2xl">
-            <h4 className="text-orange-400 font-bold text-[10px] uppercase tracking-[0.2em] flex items-center gap-2">Protocolo de Descalificación</h4>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="flex items-center gap-2 text-[10px] font-bold uppercase p-2 border border-white/10 rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
-                <input type="checkbox" className="accent-orange-500" checked={formData.disqualifications.superar10min} onChange={e => setFormData({...formData, disqualifications: {...formData.disqualifications, superar10min: e.target.checked}})}/> Exceso Tiempo
-              </label>
-              <label className="flex items-center gap-2 text-[10px] font-bold uppercase p-2 border border-white/10 rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
-                <input type="checkbox" className="accent-orange-500" checked={formData.disqualifications.conductaAntideportiva} onChange={e => setFormData({...formData, disqualifications: {...formData.disqualifications, conductaAntideportiva: e.target.checked}})}/> Antideportiva
-              </label>
-            </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-3xl border-2 border-dashed border-gray-100 space-y-4">
+        <h4 className="text-[10px] uppercase font-black text-gray-400 tracking-widest text-center">Desglose Analítico</h4>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs font-bold">
+          <div className="flex justify-between border-b border-gray-50 py-1">
+            <span className="text-gray-400">Altura:</span>
+            <span className="text-field-green">+{alturaPts.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between border-b border-gray-50 py-1">
+            <span className="text-gray-400">Picado:</span>
+            <span className="text-field-green">+{picadoPts.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between border-b border-gray-50 py-1">
+            <span className="text-gray-400">Remontada:</span>
+            <span className="text-field-green">+{remontadaPts.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between border-b border-gray-50 py-1">
+            <span className="text-gray-400">Bonos/Tiempo:</span>
+            <span className="text-field-green">+{totalBon.toFixed(2)}</span>
           </div>
         </div>
       </div>

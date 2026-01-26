@@ -1,34 +1,29 @@
+
 import { createClient } from '@supabase/supabase-js';
 
+// Intentar obtener las variables desde process.env o window.process.env
 const getEnv = (key: string): string => {
-  try {
-    // Intenta obtener de window.process.env (inyectado por index.html) o del entorno de compilación
-    const value = (window as any).process?.env?.[key] || (typeof process !== 'undefined' ? process.env?.[key] : '');
-    return typeof value === 'string' ? value : '';
-  } catch {
-    return '';
+  if (typeof process !== 'undefined' && process.env && process.env[key]) {
+    return process.env[key] as string;
   }
+  if ((window as any).process?.env?.[key]) {
+    return (window as any).process.env[key];
+  }
+  return '';
 };
 
-// URL y Key
 const supabaseUrl = getEnv('SUPABASE_URL') || 'https://hxpvgtlmjxmsrmaxfqag.supabase.co';
 const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
 
-// Crear cliente solo si la clave es válida
+// Solo inicializar si tenemos la clave anon
 export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.length > 10) 
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      realtime: {
-        params: {
-          eventsPerSecond: 10
-        }
-      }
-    }) 
+  ? createClient(supabaseUrl, supabaseAnonKey) 
   : null;
 
 if (!supabase) {
-  console.warn("⚠️ SUPABASE OFFLINE: No se detectó SUPABASE_ANON_KEY. El sistema funcionará en MODO LOCAL.");
+  console.warn("⚠️ SUPABASE OFFLINE: No se detectó la clave de API. Los cambios se guardarán solo localmente.");
 } else {
-  console.log("🚀 SUPABASE ONLINE: Conexión establecida con éxito.");
+  console.log("✅ SUPABASE ONLINE: Conectado al proyecto hxpvgtlmjxmsrmaxfqag.");
 }
 
 export async function saveChatHistory(userId: string, userMessage: string, aiResponse: string) {
