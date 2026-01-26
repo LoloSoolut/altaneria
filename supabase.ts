@@ -1,8 +1,8 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
+import { createClient } from '@supabase/supabase-js';
 
 /**
- * Acceso seguro a variables de entorno inyectadas por Vercel u otros entornos.
+ * Acceso seguro a variables de entorno inyectadas.
  */
 const getEnv = (key: string): string => {
   try {
@@ -16,7 +16,7 @@ const getEnv = (key: string): string => {
 const supabaseUrl = getEnv('SUPABASE_URL') || 'https://hxpvgtlmjxmsrmaxfqag.supabase.co';
 const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
 
-// Solo inicializamos si tenemos una clave válida
+// Solo inicializamos si tenemos una clave válida de longitud suficiente
 export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.length > 20) 
   ? createClient(supabaseUrl, supabaseAnonKey) 
   : null;
