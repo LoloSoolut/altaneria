@@ -2,13 +2,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { supabase, saveChatHistory } from '../supabase';
-import { MessageSquare, Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { MessageSquare, Send, Bot, User, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 
 const TechnicalAssistant: React.FC = () => {
   const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Acceso seguro a la API Key
+  const getApiKey = () => {
+    try { return process.env.API_KEY; } catch (e) { return undefined; }
+  };
+
+  const apiKey = getApiKey();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -18,6 +25,10 @@ const TechnicalAssistant: React.FC = () => {
 
   const handleSend = async () => {
     if (!input.trim() || isTyping) return;
+    if (!apiKey) {
+      alert('La API_KEY de Gemini no está configurada en el servidor.');
+      return;
+    }
 
     const userMsg = input.trim();
     setInput('');
@@ -25,7 +36,7 @@ const TechnicalAssistant: React.FC = () => {
     setIsTyping(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: userMsg,
@@ -44,8 +55,6 @@ const TechnicalAssistant: React.FC = () => {
       const aiText = response.text || 'Lo siento, no he podido procesar tu consulta técnico.';
       
       setMessages(prev => [...prev, { role: 'ai', text: aiText }]);
-      
-      // Guardar en Supabase según la petición del usuario
       await saveChatHistory('juez_oficial', userMsg, aiText);
 
     } catch (error) {
@@ -65,6 +74,13 @@ const TechnicalAssistant: React.FC = () => {
         </div>
         <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
       </div>
+
+      {!apiKey && (
+        <div className="bg-amber-50 p-3 text-[10px] text-amber-700 flex items-center gap-2 border-b">
+          <AlertCircle className="w-3 h-3" />
+          Falta API_KEY en Vercel. El asistente no funcionará.
+        </div>
+      )}
 
       <div ref={scrollRef} className="flex-grow p-4 overflow-y-auto space-y-4 bg-gray-50/50">
         {messages.length === 0 && (
@@ -101,15 +117,16 @@ const TechnicalAssistant: React.FC = () => {
         <div className="flex gap-2">
           <input 
             type="text"
+            disabled={!apiKey}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
-            placeholder="Ej: ¿Cómo se calcula la remontada?"
-            className="flex-grow px-4 py-2 bg-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-field-green transition text-sm"
+            placeholder={apiKey ? "Ej: ¿Cómo se calcula la remontada?" : "IA Desactivada"}
+            className="flex-grow px-4 py-2 bg-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-field-green transition text-sm disabled:opacity-50"
           />
           <button 
             onClick={handleSend}
-            disabled={isTyping}
+            disabled={isTyping || !apiKey}
             className="p-2 bg-field-green text-white rounded-xl hover:bg-green-700 transition disabled:opacity-50"
           >
             <Send className="w-5 h-5" />
