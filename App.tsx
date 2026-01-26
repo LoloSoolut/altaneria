@@ -6,8 +6,8 @@ import PublicView from './components/PublicView.tsx';
 import { supabase } from './supabase.ts';
 import { Trophy, Gavel, Users, ShieldCheck, Loader2, AlertCircle, Bird } from 'lucide-react';
 
-// v1.3.3 - Imagen de Gerifalte Profesional y Refinamiento Estético
-const APP_VERSION = "1.3.3"; 
+// v1.3.4 - Actualización de Imagen de Portada Gerifalte Oficial
+const APP_VERSION = "1.3.4"; 
 
 const App: React.FC = () => {
   const [view, setView] = useState<'home' | 'judge' | 'public'>('home');
@@ -147,21 +147,25 @@ const App: React.FC = () => {
       <main className="flex-grow container mx-auto px-4 py-12">
         {view === 'home' && (
           <div className="max-w-4xl mx-auto space-y-16 animate-in fade-in duration-1000">
-            {/* PORTADA CON EL GERIFALTE PROFESIONAL */}
+            {/* PORTADA CON EL GERIFALTE SELECCIONADO */}
             <div className="relative group overflow-hidden rounded-[40px] shadow-2xl bg-white border-8 border-white">
               <div className="relative h-[650px] overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1581439645268-ad7bb4969964?q=80&w=2000" 
-                  alt="Halcón Gerifalte Blanco Profesional" 
-                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                  src="https://halcones.es/wp-content/uploads/2026/01/slide_gyr_halcones-1.png" 
+                  alt="Halcón Gerifalte Oficial" 
+                  className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-105" 
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent flex flex-col justify-end p-12">
-                  <span className="text-field-green bg-white/90 backdrop-blur-sm self-start px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-4 shadow-lg">
-                    Excelencia Deportiva
-                  </span>
-                  <h2 className="text-white text-4xl md:text-7xl font-black mb-4 tracking-tighter uppercase drop-shadow-2xl">La Altanería Profesional</h2>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-12">
+                  <div className="flex flex-col gap-2 mb-6">
+                    <span className="text-field-green bg-white/95 backdrop-blur-sm self-start px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">
+                      Élite de la Cetrería
+                    </span>
+                  </div>
+                  <h2 className="text-white text-4xl md:text-7xl font-black mb-4 tracking-tighter uppercase drop-shadow-2xl max-w-2xl">
+                    Competiciones de Altanería
+                  </h2>
                   <p className="text-white/90 text-xl font-light max-w-2xl italic border-l-4 border-field-green pl-6 bg-black/40 p-6 rounded-r-3xl backdrop-blur-xl">
-                    "Gestión técnica avanzada donde el rigor del jurado garantiza la justicia deportiva para cada halconero en la cumbre de la cetrería."
+                    "Rigurosidad técnica y pasión por el vuelo. El estándar profesional para el registro de actas de vuelo y clasificación en tiempo real."
                   </p>
                 </div>
               </div>
