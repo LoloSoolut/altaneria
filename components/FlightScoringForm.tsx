@@ -15,7 +15,8 @@ import {
   Hourglass, 
   Star, 
   Clock, 
-  AlertTriangle 
+  AlertTriangle,
+  Gavel
 } from 'lucide-react';
 
 interface Props {
@@ -191,6 +192,35 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
                 <div className="flex items-center gap-2"><input type="checkbox" className="w-4 h-4 rounded accent-red-600" checked={formData.penSueltaObligada} onChange={e => setFormData({...formData, penSueltaObligada: e.target.checked})} /> Suelta obligada</div>
                 <span className="flex items-center gap-1 font-black"><Minus className="w-3 h-3"/> 10.0</span>
               </label>
+            </div>
+
+            {/* SECCIÓN AÑADIDA: VALORACIÓN DEL JUEZ RESPECTO AL PICADO */}
+            <div className="mt-6 pt-4 border-t border-red-200/50">
+              <div className="flex items-center gap-2 mb-3">
+                <Gavel className="w-4 h-4 text-red-800" />
+                <span className="text-[10px] font-black text-red-900 uppercase tracking-widest">Valoración del Juez (Picado)</span>
+              </div>
+              <div className="bg-white/60 p-5 rounded-2xl border border-red-200/30">
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-[9px] font-bold text-red-800 uppercase italic">Calidad y agresividad</span>
+                  <span className="text-xl font-black text-red-600 flex items-center gap-1">
+                    <Minus className="w-4 h-4" />{formData.penPicado || 0} <span className="text-[10px]">pts</span>
+                  </span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="5" 
+                  step="0.5" 
+                  value={formData.penPicado || 0} 
+                  onChange={e => setFormData({...formData, penPicado: Number(e.target.value)})} 
+                  className="w-full h-2 bg-red-200 rounded-lg appearance-none cursor-pointer accent-red-600"
+                />
+                <div className="flex justify-between mt-2 px-1">
+                  <span className="text-[8px] font-black text-red-300">EXCELENTE (0)</span>
+                  <span className="text-[8px] font-black text-red-300">DEFICIENTE (5)</span>
+                </div>
+              </div>
             </div>
           </div>
 
