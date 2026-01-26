@@ -2,51 +2,38 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@^2.39.0';
 
 /**
- * Función auxiliar para obtener variables de entorno de forma segura en el navegador.
- * Evita el error "process is not defined" que bloquea el renderizado.
+ * Intenta obtener valores de entorno sin romper la ejecución si 'process' no existe.
  */
-const safeGetEnv = (key: string): string | undefined => {
+const getEnv = (key: string): string => {
   try {
-    return process.env[key];
+    // @ts-ignore
+    return (window.process?.env?.[key] || "");
   } catch (e) {
-    return undefined;
+    return "";
   }
 };
 
-const supabaseUrl = safeGetEnv('SUPABASE_URL') || 'https://hxpvgtlmjxmsrmaxfqag.supabase.co';
-const supabaseAnonKey = safeGetEnv('SUPABASE_ANON_KEY');
+const supabaseUrl = getEnv('SUPABASE_URL') || 'https://hxpvgtlmjxmsrmaxfqag.supabase.co';
+const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
 
 /**
- * Inicialización protegida del cliente de Supabase.
+ * Inicialización segura. Si no hay clave, 'supabase' será null y App.tsx usará localStorage.
  */
-export const supabase = (
-  typeof supabaseUrl === 'string' && 
-  supabaseUrl.trim().length > 10 && 
-  typeof supabaseAnonKey === 'string' && 
-  supabaseAnonKey.trim().length > 10
-) ? createClient(supabaseUrl, supabaseAnonKey) : null;
+export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.length > 20) 
+  ? createClient(supabaseUrl, supabaseAnonKey) 
+  : null;
 
-/**
- * Función para guardar el historial de chats con Gemini en Supabase.
- */
+if (!supabase) {
+  console.warn("Supabase: No se detectaron credenciales válidas. Iniciando en MODO LOCAL.");
+}
+
 export async function saveChatHistory(userId: string, userMessage: string, aiResponse: string) {
-  if (!supabase) {
-    console.warn('Supabase no configurado: Operando en modo local.');
-    return { data: null, error: new Error('Supabase no configurado') };
-  }
+  if (!supabase) return { data: null, error: null };
 
   try {
     const { data, error } = await supabase
       .from('historial_chats')
-      .insert([
-        { 
-          usuario_id: userId, 
-          mensaje_usuario: userMessage, 
-          respuesta_ia: aiResponse 
-        }
-      ]);
-    
-    if (error) console.error('Error Supabase:', error.message);
+      .insert([{ usuario_id: userId, mensaje_usuario: userMessage, respuesta_ia: aiResponse }]);
     return { data, error };
   } catch (err) {
     return { data: null, error: err };
