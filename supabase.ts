@@ -1,30 +1,18 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@^2.39.0';
 
-/**
- * Intenta obtener valores de entorno sin romper la ejecución si 'process' no existe.
- */
-const getEnv = (key: string): string => {
-  try {
-    // @ts-ignore
-    return (window.process?.env?.[key] || "");
-  } catch (e) {
-    return "";
-  }
-};
-
-const supabaseUrl = getEnv('SUPABASE_URL') || 'https://hxpvgtlmjxmsrmaxfqag.supabase.co';
-const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
+const supabaseUrl = process.env.SUPABASE_URL || 'https://hxpvgtlmjxmsrmaxfqag.supabase.co';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
 
 /**
- * Inicialización segura. Si no hay clave, 'supabase' será null y App.tsx usará localStorage.
+ * Inicialización segura de Supabase.
  */
 export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.length > 20) 
   ? createClient(supabaseUrl, supabaseAnonKey) 
   : null;
 
 if (!supabase) {
-  console.warn("Supabase: No se detectaron credenciales válidas. Iniciando en MODO LOCAL.");
+  console.debug("Supabase: Operando en MODO LOCAL.");
 }
 
 export async function saveChatHistory(userId: string, userMessage: string, aiResponse: string) {

@@ -1,21 +1,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { supabase, saveChatHistory } from '../supabase';
-import { MessageSquare, Send, Bot, User, Loader2, Sparkles, AlertCircle } from 'lucide-react';
+import { saveChatHistory } from '../supabase';
+import { MessageSquare, Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
 
 const TechnicalAssistant: React.FC = () => {
   const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Acceso seguro a la API Key
-  const getApiKey = () => {
-    try { return process.env.API_KEY; } catch (e) { return undefined; }
-  };
-
-  const apiKey = getApiKey();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -25,10 +18,6 @@ const TechnicalAssistant: React.FC = () => {
 
   const handleSend = async () => {
     if (!input.trim() || isTyping) return;
-    if (!apiKey) {
-      alert('La API_KEY de Gemini no está configurada en el servidor.');
-      return;
-    }
 
     const userMsg = input.trim();
     setInput('');
@@ -36,30 +25,38 @@ const TechnicalAssistant: React.FC = () => {
     setIsTyping(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey });
+      // Inicialización siguiendo las guías oficiales de Google GenAI
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: userMsg,
         config: {
           systemInstruction: `Eres un experto técnico en competiciones de Altanería (Caza con halcones). 
-          Ayudas a los jueces a interpretar el reglamento. 
-          Puntos clave:
-          - Altura de servicio: 0.1 pts por metro.
-          - Picado: +1 pt por cada 10km/h por encima de 100km/h.
-          - Remontada = (Altura / TiempoVuelo) * 60.
+          Ayudas a los jueces a interpretar el reglamento oficial. 
+          Puntos clave del reglamento:
+          - Altura de servicio: 0.1 pts por cada metro de altura.
+          - Picado: +1 pt por cada 10km/h que exceda los 100km/h.
+          - Remontada: (Altura / TiempoVuelo) * 60.
           - Penalizaciones: Señuelo encarnado (-4), Enseñar señuelo (-6), Suelta obligada (-10).
-          Sé conciso, profesional y elegante.`,
+          Tu tono debe ser profesional, conciso y técnico.`,
         },
       });
 
-      const aiText = response.text || 'Lo siento, no he podido procesar tu consulta técnico.';
+      const aiText = response.text || 'No he podido procesar la consulta técnica en este momento.';
       
       setMessages(prev => [...prev, { role: 'ai', text: aiText }]);
-      await saveChatHistory('juez_oficial', userMsg, aiText);
+      
+      // Intentar guardar en historial si Supabase está activo
+      try {
+        await saveChatHistory('juez_oficial', userMsg, aiText);
+      } catch (e) {
+        console.debug('Historial no guardado (modo local activo)');
+      }
 
     } catch (error) {
       console.error('Error IA:', error);
-      setMessages(prev => [...prev, { role: 'ai', text: 'Error de conexión con el Asistente Técnico.' }]);
+      setMessages(prev => [...prev, { role: 'ai', text: 'El servicio de asistencia técnica no está disponible. Verifique la configuración de la API_KEY en el servidor.' }]);
     } finally {
       setIsTyping(false);
     }
@@ -74,13 +71,6 @@ const TechnicalAssistant: React.FC = () => {
         </div>
         <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
       </div>
-
-      {!apiKey && (
-        <div className="bg-amber-50 p-3 text-[10px] text-amber-700 flex items-center gap-2 border-b">
-          <AlertCircle className="w-3 h-3" />
-          Falta API_KEY en Vercel. El asistente no funcionará.
-        </div>
-      )}
 
       <div ref={scrollRef} className="flex-grow p-4 overflow-y-auto space-y-4 bg-gray-50/50">
         {messages.length === 0 && (
@@ -117,16 +107,15 @@ const TechnicalAssistant: React.FC = () => {
         <div className="flex gap-2">
           <input 
             type="text"
-            disabled={!apiKey}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
-            placeholder={apiKey ? "Ej: ¿Cómo se calcula la remontada?" : "IA Desactivada"}
-            className="flex-grow px-4 py-2 bg-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-field-green transition text-sm disabled:opacity-50"
+            placeholder="Ej: ¿Cómo se puntúa la captura limpia?"
+            className="flex-grow px-4 py-2 bg-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-field-green transition text-sm"
           />
           <button 
             onClick={handleSend}
-            disabled={isTyping || !apiKey}
+            disabled={isTyping}
             className="p-2 bg-field-green text-white rounded-xl hover:bg-green-700 transition disabled:opacity-50"
           >
             <Send className="w-5 h-5" />
