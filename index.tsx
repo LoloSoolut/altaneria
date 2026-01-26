@@ -12,10 +12,13 @@ if (container) {
         <App />
       </React.StrictMode>
     );
-    console.log("Sistema de Altanería Profesional iniciado.");
+    console.log("SISTEMA DE ALTANERÍA PROFESIONAL: Renderizado inicial correcto.");
   } catch (err) {
-    console.error("Fallo al renderizar la aplicación:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Fallo crítico en el renderizado de React:", msg);
+    // Inyectar mensaje visual si el renderizado falla
+    container.innerHTML = `<div style="padding: 20px; color: red; font-family: sans-serif;">Error de carga: ${msg}</div>`;
   }
 } else {
-  console.error("No se encontró el elemento #root.");
+  console.error("Elemento raíz #root no encontrado en el DOM.");
 }
