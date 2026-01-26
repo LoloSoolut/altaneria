@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Championship, AppState } from './types.ts';
 import JudgePanel from './components/JudgePanel.tsx';
 import PublicView from './components/PublicView.tsx';
 import { supabase } from './supabase.ts';
-import { Trophy, Gavel, Users, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
+import { Trophy, Gavel, Users, ShieldCheck, Loader2, AlertCircle, Bird } from 'lucide-react';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'home' | 'judge' | 'public'>('home');
@@ -90,72 +89,104 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 text-field-green animate-spin mx-auto" />
-          <p className="font-bold text-falcon-brown">Cargando sistema de Altanería...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#fcfcf9]">
+        <div className="text-center space-y-6">
+          <div className="relative inline-block">
+            <Bird className="w-16 h-16 text-field-green animate-pulse" />
+            <Loader2 className="w-20 h-20 text-falcon-brown animate-spin absolute -top-2 -left-2 opacity-20" />
+          </div>
+          <p className="font-serif text-xl text-falcon-brown tracking-widest uppercase">Iniciando Sistema Profesional...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col">
       {!supabase && (
-        <div className="bg-amber-100 text-amber-800 px-4 py-2 text-xs flex items-center justify-center gap-2">
-          <AlertCircle className="w-4 h-4" />
-          <span>Modo Local Activado.</span>
+        <div className="bg-falcon-brown text-white/80 px-4 py-1.5 text-[10px] flex items-center justify-center gap-2 uppercase tracking-tighter">
+          <AlertCircle className="w-3 h-3" />
+          <span>Ejecutando en modo de respaldo local (Desconectado de Supabase)</span>
         </div>
       )}
-      <header className="bg-field-green text-white py-6 shadow-xl border-b-4 border-falcon-brown sticky top-0 z-50">
-        <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <Trophy className="w-10 h-10 text-yellow-400" />
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-center md:text-left">
-              COMPETICIONES DE ALTANERÍA PARA PROFESIONALES
-            </h1>
+      <header className="bg-field-green text-white py-8 shadow-2xl border-b-[6px] border-falcon-brown sticky top-0 z-50">
+        <div className="container mx-auto px-6 flex flex-col lg:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-4 group cursor-pointer" onClick={() => setView('home')}>
+            <div className="bg-white p-2 rounded-lg shadow-inner">
+              <Trophy className="w-10 h-10 text-field-green" />
+            </div>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight leading-none">
+                COMPETICIONES DE ALTANERÍA
+              </h1>
+              <p className="text-[10px] uppercase tracking-[0.3em] font-light mt-1 opacity-70">Para Profesionales de la Cetrería</p>
+            </div>
           </div>
-          <nav className="flex gap-2">
-            <button onClick={() => setView('home')} className={`px-4 py-2 rounded-full transition ${view === 'home' ? 'bg-falcon-brown' : 'hover:bg-green-700'}`}>Inicio</button>
-            <button onClick={() => setView('public')} className={`px-4 py-2 rounded-full flex items-center gap-2 transition ${view === 'public' ? 'bg-falcon-brown' : 'hover:bg-green-700'}`}>
+          <nav className="flex bg-black/10 p-1.5 rounded-2xl backdrop-blur-md">
+            <button onClick={() => setView('home')} className={`px-6 py-2.5 rounded-xl font-bold transition-all duration-300 ${view === 'home' ? 'bg-white text-field-green shadow-lg' : 'hover:bg-white/10'}`}>Inicio</button>
+            <button onClick={() => setView('public')} className={`px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 ${view === 'public' ? 'bg-white text-field-green shadow-lg' : 'hover:bg-white/10'}`}>
               <Users className="w-4 h-4" /> Público
             </button>
-            <button onClick={() => setView('judge')} className={`px-4 py-2 rounded-full flex items-center gap-2 transition ${view === 'judge' ? 'bg-falcon-brown' : 'hover:bg-green-700'}`}>
-              <Gavel className="w-4 h-4" /> Juez
+            <button onClick={() => setView('judge')} className={`px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 ${view === 'judge' ? 'bg-white text-field-green shadow-lg' : 'hover:bg-white/10'}`}>
+              <Gavel className="w-4 h-4" /> Jurado
             </button>
           </nav>
         </div>
       </header>
 
-      <main className="flex-grow container mx-auto px-4 py-8">
+      <main className="flex-grow container mx-auto px-4 py-12">
         {view === 'home' && (
-          <div className="max-w-2xl mx-auto text-center mt-12">
-            <div className="mb-8 relative">
-              <img src="https://images.unsplash.com/photo-1611689225620-3e70248bc0f0?q=80&w=2000" alt="Altanería" className="rounded-2xl shadow-2xl mx-auto border-4 border-falcon-brown object-cover h-72 w-full" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-2xl flex items-end p-6">
-                <p className="text-white text-xl font-bold italic">"La excelencia en el cielo, la precisión en la tierra."</p>
+          <div className="max-w-4xl mx-auto space-y-16">
+            <div className="relative group overflow-hidden rounded-[32px] shadow-professional">
+              <img src="https://images.unsplash.com/photo-1611689225620-3e70248bc0f0?q=80&w=2000" alt="Altanería" className="w-full h-[450px] object-cover transition-transform duration-700 group-hover:scale-105" />
+              <div className="absolute inset-0 bg-gradient-to-t from-field-green/90 via-field-green/40 to-transparent flex flex-col justify-end p-12">
+                <h2 className="text-white text-4xl md:text-5xl font-bold mb-4">La Excelencia en el Vuelo</h2>
+                <p className="text-white/90 text-lg font-light max-w-xl italic">"Donde la precisión del juez se encuentra con la majestuosidad del halcón en el cielo profesional."</p>
               </div>
             </div>
-            <h2 className="text-4xl font-bold text-falcon-brown mb-4">Panel de Control</h2>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-white p-8 rounded-2xl shadow-lg border-t-4 border-field-green cursor-pointer hover:shadow-2xl transition group" onClick={() => setView('public')}>
-                <Users className="w-12 h-12 text-field-green mx-auto mb-4 group-hover:scale-110" />
-                <h3 className="text-xl font-bold mb-2">Vista Pública</h3>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="bg-white p-10 rounded-3xl shadow-professional border border-gray-100 hover:border-field-green transition-all duration-500 cursor-pointer group" onClick={() => setView('public')}>
+                <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <Users className="w-8 h-8 text-field-green" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3 text-gray-800">Galería de Resultados</h3>
+                <p className="text-gray-500 leading-relaxed">Acceso a clasificaciones en tiempo real, detalles de picados y alturas para el público general.</p>
               </div>
-              <div className="bg-white p-8 rounded-2xl shadow-lg border-t-4 border-falcon-brown cursor-pointer hover:shadow-2xl transition group" onClick={() => setView('judge')}>
-                <ShieldCheck className="w-12 h-12 text-falcon-brown mx-auto mb-4 group-hover:scale-110" />
-                <h3 className="text-xl font-bold mb-2">Panel del Juez</h3>
+              <div className="bg-white p-10 rounded-3xl shadow-professional border border-gray-100 hover:border-falcon-brown transition-all duration-500 cursor-pointer group" onClick={() => setView('judge')}>
+                <div className="w-16 h-16 bg-orange-50 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <ShieldCheck className="w-8 h-8 text-falcon-brown" />
+                </div>
+                <h3 className="text-2xl font-bold mb-3 text-gray-800">Acceso Arbitral</h3>
+                <p className="text-gray-500 leading-relaxed">Sistema restringido para el cuerpo de jueces. Gestión de inscripciones y evaluación técnica oficial.</p>
               </div>
             </div>
           </div>
         )}
 
         {view === 'judge' && !isAuth && (
-          <div className="max-w-md mx-auto mt-20 bg-white p-8 rounded-2xl shadow-2xl border border-gray-100">
-            <h2 className="text-2xl font-bold mb-6 text-center text-falcon-brown">Acceso Juez</h2>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-field-green outline-none" placeholder="Introduce 'Lolo'" />
-              <button type="submit" className="w-full bg-field-green text-white py-3 rounded-lg font-bold hover:bg-green-700">Acceder</button>
+          <div className="max-w-md mx-auto mt-12 bg-white p-10 rounded-[32px] shadow-professional border border-gray-100">
+            <div className="text-center mb-8">
+              <div className="w-16 h-16 bg-falcon-brown/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Gavel className="w-8 h-8 text-falcon-brown" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">Identificación de Juez</h2>
+              <p className="text-gray-400 text-sm mt-1">Por favor, introduzca su credencial de acceso.</p>
+            </div>
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] uppercase font-black text-gray-500 tracking-widest ml-1">Contraseña de Seguridad</label>
+                <input 
+                  type="password" 
+                  value={password} 
+                  onChange={(e) => setPassword(e.target.value)} 
+                  className="w-full px-5 py-4 rounded-xl border border-gray-200 focus:ring-4 focus:ring-field-green/10 focus:border-field-green outline-none transition-all text-center text-lg tracking-widest" 
+                  placeholder="••••" 
+                />
+              </div>
+              <button type="submit" className="w-full bg-field-green text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-green-800 transition-all shadow-lg hover:shadow-field-green/20">
+                Verificar Acceso
+              </button>
             </form>
           </div>
         )}
@@ -164,9 +195,20 @@ const App: React.FC = () => {
         {view === 'public' && <PublicView state={state} />}
       </main>
 
-      <footer className="bg-falcon-brown text-white py-6 mt-auto">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-sm font-semibold opacity-90 tracking-wider uppercase">COMPETICIONES DE ALTANERÍA PARA PROFESIONALES</p>
+      <footer className="bg-[#1a1a1a] text-white py-12">
+        <div className="container mx-auto px-6">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-8 border-b border-white/10 pb-12 mb-12">
+            <div className="flex items-center gap-3">
+              <Bird className="w-8 h-8 text-field-green" />
+              <span className="text-xl font-bold tracking-tighter">ALTANERÍA PRO</span>
+            </div>
+            <p className="text-sm text-gray-400 font-light text-center md:text-right max-w-sm">
+              Plataforma oficial para la gestión técnica de campeonatos de altanería. Regulado según normativas internacionales.
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-[10px] font-black opacity-40 tracking-[0.5em] uppercase">COMPETICIONES DE ALTANERÍA PARA PROFESIONALES © 2024</p>
+          </div>
         </div>
       </footer>
     </div>
