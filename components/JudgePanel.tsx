@@ -2,7 +2,21 @@
 import React, { useState } from 'react';
 import { AppState, Championship, FlightData } from '../types.ts';
 import { supabase } from '../supabase.ts';
-import { Plus, Trash2, Edit3, Gavel, Clock, Save, CloudOff, Cloud, RefreshCw, AlertTriangle, Database, FileDown, ScrollText } from 'lucide-react';
+import { 
+  Plus, 
+  Trash2, 
+  Edit3, 
+  Gavel, 
+  Clock, 
+  CloudOff, 
+  Cloud, 
+  RefreshCw, 
+  FileDown, 
+  ScrollText, 
+  Bird 
+} from 'lucide-react';
+
+// Corrección de rutas: Aseguramos el uso de rutas relativas locales
 import FlightScoringForm from './FlightScoringForm.tsx';
 import TechnicalAssistant from './TechnicalAssistant.tsx';
 import { SCORING } from '../constants.ts';
@@ -29,28 +43,27 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('l', 'mm', 'a4');
     
-    // Estilos de PDF
-    const primaryColor = [27, 94, 32]; // Field Green
-    const secondaryColor = [93, 64, 55]; // Falcon Brown
+    const primaryColor = [27, 94, 32]; 
     
-    // Encabezado
     doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, 297, 30, 'F');
+    doc.rect(0, 0, 297, 40, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
+    doc.setFontSize(26);
     doc.setFont('helvetica', 'bold');
-    doc.text('COMPETICIONES DE ALTANERÍA PARA PROFESIONALES', 15, 20);
+    doc.text('COMPETICIONES DE ALTANERÍA PARA PROFESIONALES', 15, 22);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text('ACTA OFICIAL DE RESULTADOS TÉCNICOS Y CLASIFICACIÓN', 15, 31);
     
-    // Metadatos del Campeonato
-    doc.setTextColor(50, 50, 50);
-    doc.setFontSize(14);
-    doc.text(`Campeonato: ${selectedChamp.name}`, 15, 45);
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(selectedChamp.name, 15, 55);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Ubicación: ${selectedChamp.location} | Fecha: ${selectedChamp.date}`, 15, 52);
-    doc.text(`Fecha de Reporte: ${new Date().toLocaleString()}`, 15, 57);
+    doc.text(`Ubicación: ${selectedChamp.location} | Fecha: ${selectedChamp.date}`, 15, 62);
+    doc.text(`Generado el ${new Date().toLocaleString()}`, 15, 67);
 
-    // Tabla de Clasificación
     const sortedParticipants = [...selectedChamp.participants].sort((a, b) => b.totalPoints - a.totalPoints);
     const tableData = sortedParticipants.map((p, i) => {
       const turnBonus = SCORING.calculateTimeBonus(p.tiempoVuelo);
@@ -71,35 +84,35 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
         p['bon recogida'],
         turnBonus,
         penTotal > 0 ? `-${penTotal}` : '0',
-        { content: p.totalPoints.toFixed(2), styles: { fontStyle: 'bold', textColor: primaryColor } }
+        { content: p.totalPoints.toFixed(2), styles: { fontStyle: 'bold', textColor: primaryColor, fontSize: 11 } }
       ];
     });
 
     // @ts-ignore
     doc.autoTable({
-      startY: 65,
-      head: [['Pos', 'Cetrero', 'Halcón', 'Alt.', 'Tiempo', 'Cort.', 'Picado', 'Dist.', 'B.Rec', 'B.Tie', 'Pen', 'TOTAL']],
+      startY: 75,
+      head: [['Pos', 'Cetrero', 'Halcón', 'Alt(m)', 'T.Vuelo', 'T.Cort(s)', 'Picado', 'Dist(m)', 'B.Rec', 'B.Tie', 'Pen', 'TOTAL']],
       body: tableData,
       theme: 'grid',
-      headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontSize: 9 },
-      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontSize: 8, halign: 'center', valign: 'middle' },
+      styles: { fontSize: 8, cellPadding: 3, halign: 'center' },
       columnStyles: {
-        0: { cellWidth: 10 },
-        11: { cellWidth: 20, halign: 'center' }
+        1: { halign: 'left', cellWidth: 40 },
+        2: { halign: 'left', cellWidth: 35 },
+        11: { cellWidth: 22, fillColor: [245, 245, 245] }
       }
     });
 
-    // Footer
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
-      doc.text('Documento Oficial de Arbitraje - Sistema Altanería Pro v1.2', 15, 200);
-      doc.text(`Página ${i} de ${pageCount}`, 270, 200);
+      doc.text('Este documento constituye el registro oficial de la competición. Cualquier alteración anula su validez.', 15, 200);
+      doc.text(`Sistema Altanería Pro v1.3.2 | Página ${i} de ${pageCount}`, 250, 200);
     }
 
-    doc.save(`${selectedChamp.name.replace(/\s+/g, '_')}_Clasificacion.pdf`);
+    doc.save(`${selectedChamp.name}.PDF`);
   };
 
   const syncWithSupabase = async (championship: Championship) => {
@@ -121,7 +134,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
 
       if (error) setLastError(error.message);
     } catch (e) {
-      setLastError("Error de red");
+      setLastError("Error de sincronización de red");
     } finally {
       setSyncing(false);
     }
@@ -147,7 +160,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
   };
 
   const deleteChamp = async (id: string) => {
-    if (!confirm('¿Seguro que desea eliminar este campeonato?')) return;
+    if (!confirm('¿Seguro que desea eliminar permanentemente este campeonato y sus registros?')) return;
     const updatedChamps = state.championships.filter(c => c.id !== id);
     onUpdateState({ championships: updatedChamps });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
@@ -170,7 +183,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
   };
 
   const deleteParticipant = async (participantId: string) => {
-    if (!selectedChamp || !confirm('¿Eliminar registro?')) return;
+    if (!selectedChamp || !confirm('¿Eliminar registro de vuelo de forma permanente?')) return;
     const updatedParticipants = selectedChamp.participants.filter(p => p.id !== participantId);
     const updatedChamp = { ...selectedChamp, participants: updatedParticipants };
     const updatedChamps = state.championships.map(c => c.id === selectedChamp.id ? updatedChamp : c);
@@ -204,8 +217,8 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
         <div className="flex items-center gap-3">
           {syncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : supabase ? <Cloud className="w-4 h-4" /> : <CloudOff className="w-4 h-4" />}
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest leading-none">Estado de la Base de Datos</p>
-            <p className="text-xs font-bold mt-1">{!supabase ? "Modo Local" : lastError ? `Error: ${lastError}` : "Sincronizado"}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest leading-none">Estado de Conexión</p>
+            <p className="text-xs font-bold mt-1">{!supabase ? "Modo Local Seguro" : lastError ? `Error: ${lastError}` : "Nube Sincronizada y Activa"}</p>
           </div>
         </div>
       </div>
@@ -218,18 +231,18 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                 <Gavel className="w-6 h-6 text-field-green" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-falcon-brown uppercase tracking-tight">Panel del Jurado</h2>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Gestión Técnica Profesional</p>
+                <h2 className="text-xl font-black text-falcon-brown uppercase tracking-tight">Jurado Profesional</h2>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Gestión de Actas y Resultados</p>
               </div>
             </div>
             <div className="flex gap-2">
               {selectedChamp && (
-                <button onClick={exportToPDF} className="bg-yellow-600 text-white px-5 py-3 rounded-xl flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:bg-yellow-700 transition-all shadow-lg active:scale-95">
-                  <FileDown className="w-4 h-4" /> PDF Clasificación
+                <button onClick={exportToPDF} title="Exportar Clasificación PDF" className="bg-yellow-600 text-white px-5 py-3 rounded-xl flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:bg-yellow-700 transition-all shadow-lg active:scale-95">
+                  <FileDown className="w-4 h-4" /> Exportar PDF
                 </button>
               )}
               <button onClick={() => setIsCreating(true)} className="bg-field-green text-white px-6 py-3 rounded-xl flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:bg-green-800 transition-all shadow-lg active:scale-95">
-                <Plus className="w-4 h-4" /> Nuevo Torneo
+                <Plus className="w-4 h-4" /> Nuevo Campeonato
               </button>
             </div>
           </div>
@@ -239,11 +252,11 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
               <input required placeholder="Nombre del Campeonato" value={newChamp.name} onChange={e => setNewChamp({...newChamp, name: e.target.value})} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-field-green" />
               <div className="flex gap-4">
                 <input required type="date" value={newChamp.date} onChange={e => setNewChamp({...newChamp, date: e.target.value})} className="flex-1 px-4 py-3 border rounded-xl outline-none" />
-                <input required placeholder="Localidad" value={newChamp.location} onChange={e => setNewChamp({...newChamp, location: e.target.value})} className="flex-1 px-4 py-3 border rounded-xl outline-none" />
+                <input required placeholder="Localidad / Provincia" value={newChamp.location} onChange={e => setNewChamp({...newChamp, location: e.target.value})} className="flex-1 px-4 py-3 border rounded-xl outline-none" />
               </div>
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={() => setIsCreating(false)} className="px-6 py-3 font-bold text-gray-400 hover:text-gray-600 uppercase text-xs">Cancelar</button>
-                <button type="submit" className="bg-field-green text-white px-8 py-3 rounded-xl font-black uppercase text-xs tracking-widest">Confirmar</button>
+                <button type="submit" className="bg-field-green text-white px-8 py-3 rounded-xl font-black uppercase text-xs tracking-widest">Crear Ahora</button>
               </div>
             </form>
           )}
@@ -256,8 +269,8 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                   <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-widest">{selectedChamp.location} — {selectedChamp.date}</p>
                 </div>
                 {!editingFlightId && !isAddingParticipant && (
-                  <button onClick={() => setIsAddingParticipant(true)} className="bg-falcon-brown text-white px-6 py-3 rounded-xl flex items-center gap-2 font-black uppercase text-xs tracking-widest hover:opacity-90 transition-all">
-                    <Plus className="w-4 h-4" /> Añadir Vuelo
+                  <button onClick={() => setIsAddingParticipant(true)} className="bg-falcon-brown text-white px-6 py-3 rounded-xl flex items-center gap-2 font-black uppercase text-xs tracking-widest hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-falcon-brown/20">
+                    <Plus className="w-4 h-4" /> Registrar Vuelo
                   </button>
                 )}
               </div>
@@ -274,13 +287,14 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                 <div className="space-y-3">
                   {selectedChamp.participants.length === 0 ? (
                     <div className="text-center py-20 bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-100">
-                      <p className="text-gray-400 font-medium italic">No hay registros en este torneo.</p>
+                      <Bird className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                      <p className="text-gray-400 font-medium italic">Sin vuelos registrados en este campeonato.</p>
                     </div>
                   ) : (
                     selectedChamp.participants.sort((a,b) => b.totalPoints - a.totalPoints).map((p, i) => (
-                      <div key={p.id} className="group flex items-center justify-between p-5 border border-gray-100 rounded-2xl hover:bg-green-50/30 transition-all">
+                      <div key={p.id} className="group flex items-center justify-between p-5 border border-gray-100 rounded-2xl hover:bg-green-50/30 transition-all hover:shadow-sm">
                         <div className="flex items-center gap-5">
-                          <span className={`w-10 h-10 rounded-xl flex items-center justify-center font-black transition-colors ${i < 3 ? 'bg-field-green text-white' : 'bg-gray-50 text-gray-300'}`}>
+                          <span className={`w-10 h-10 rounded-xl flex items-center justify-center font-black transition-colors ${i < 3 ? 'bg-field-green text-white shadow-md' : 'bg-gray-50 text-gray-300'}`}>
                             {i+1}
                           </span>
                           <div>
@@ -290,14 +304,14 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                         </div>
                         <div className="flex items-center gap-6">
                           <div className="text-right hidden sm:block">
-                            <p className="text-xs font-black text-field-green">{p.totalPoints.toFixed(2)} pts</p>
+                            <p className="text-sm font-black text-field-green">{p.totalPoints.toFixed(2)} pts</p>
                             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">{p.alturaServicio}m techo</p>
                           </div>
                           <div className="flex items-center gap-2 border-l pl-4">
-                            <button onClick={() => setEditingFlightId(p.id)} className="p-2.5 text-falcon-brown hover:bg-falcon-brown hover:text-white rounded-lg transition-all">
+                            <button onClick={() => setEditingFlightId(p.id)} className="p-2.5 text-falcon-brown hover:bg-falcon-brown hover:text-white rounded-lg transition-all" title="Editar Acta">
                               <Edit3 className="w-4 h-4" />
                             </button>
-                            <button onClick={() => deleteParticipant(p.id)} className="p-2.5 text-red-200 hover:bg-red-500 hover:text-white rounded-lg transition-all">
+                            <button onClick={() => deleteParticipant(p.id)} className="p-2.5 text-red-200 hover:bg-red-500 hover:text-white rounded-lg transition-all" title="Eliminar">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -311,7 +325,8 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
           ) : (
             <div className="bg-white rounded-[40px] p-24 text-center border-2 border-dashed border-gray-200 shadow-inner flex flex-col items-center">
                <ScrollText className="w-16 h-16 text-gray-100 mb-6" />
-               <h3 className="text-xl font-black text-gray-300 uppercase tracking-widest">Seleccione un Torneo</h3>
+               <h3 className="text-xl font-black text-gray-300 uppercase tracking-widest">Seleccione un Campeonato</h3>
+               <p className="text-gray-400 text-sm mt-2 max-w-xs">Elija un campeonato del historial lateral para gestionar sus resultados.</p>
             </div>
           )}
         </div>
@@ -320,7 +335,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
           <TechnicalAssistant />
           <div className="bg-white p-8 rounded-[32px] shadow-lg border border-gray-100">
             <h3 className="font-black text-[10px] uppercase tracking-[0.2em] mb-6 text-gray-400 flex items-center gap-2 border-b pb-4">
-              <Clock className="w-4 h-4" /> Torneos Recientes
+              <Clock className="w-4 h-4" /> Historial de Eventos
             </h3>
             <div className="space-y-3">
               {state.championships.map(champ => (
@@ -330,7 +345,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                     <button onClick={(e) => { e.stopPropagation(); deleteChamp(champ.id); }} className={`p-1.5 rounded-lg transition-colors ${state.selectedChampionshipId === champ.id ? 'hover:bg-white/10 text-white' : 'text-red-300 hover:text-red-500 hover:bg-red-50'}`}><Trash2 className="w-3.5 h-3.5"/></button>
                   </div>
                   <button onClick={(e) => { e.stopPropagation(); togglePublic(champ.id); }} className={`w-full text-[9px] py-2.5 rounded-xl border-2 uppercase font-black tracking-widest transition-all ${champ.isPublic ? (state.selectedChampionshipId === champ.id ? 'bg-white text-field-green border-white' : 'bg-field-green text-white border-field-green shadow-md') : (state.selectedChampionshipId === champ.id ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-200 text-gray-400 hover:border-field-green hover:text-field-green')}`}>
-                    {champ.isPublic ? "Resultados Públicos" : "Publicar Resultados"}
+                    {champ.isPublic ? "Ya en Público" : "Activar Resultados Públicos"}
                   </button>
                 </div>
               ))}
