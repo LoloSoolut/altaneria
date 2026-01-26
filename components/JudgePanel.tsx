@@ -18,7 +18,6 @@ import {
 
 // Corrección de rutas: Aseguramos el uso de rutas relativas locales
 import FlightScoringForm from './FlightScoringForm.tsx';
-import TechnicalAssistant from './TechnicalAssistant.tsx';
 import { SCORING } from '../constants.ts';
 
 interface Props {
@@ -332,7 +331,6 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
         </div>
 
         <div className="space-y-6">
-          <TechnicalAssistant />
           <div className="bg-white p-8 rounded-[32px] shadow-lg border border-gray-100">
             <h3 className="font-black text-[10px] uppercase tracking-[0.2em] mb-6 text-gray-400 flex items-center gap-2 border-b pb-4">
               <Clock className="w-4 h-4" /> Historial de Eventos
