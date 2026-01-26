@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -5,64 +6,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COMPETICIONES DE ALTANERÍA PARA PROFESIONALES</title>
     <script>
-        // Configuración de entorno segura y temprana
         window.process = { 
           env: {
             API_KEY: "",
-            SUPABASE_URL: "",
+            SUPABASE_URL: "https://hxpvgtlmjxmsrmaxfqag.supabase.co",
             SUPABASE_ANON_KEY: ""
           } 
         };
         
-        // Captura robusta de errores para diagnóstico
-        window.onerror = function(message, source, lineno, colno, error) {
-          // Lista de errores a ignorar (comúnmente causados por extensiones del navegador)
-          const ignoreList = [
-            'MetaMask', 
-            'extension', 
-            'runtime.lastError', 
-            'intrinsics',
-            'message channel closed',
-            'i18next',
-            'Failed to connect to MetaMask'
-          ];
-          
-          if (ignoreList.some(term => message && message.toLowerCase().includes(term.toLowerCase()))) {
-            return false;
-          }
-
+        window.onerror = function(message) {
+          const ignore = ['MetaMask', 'extension', 'runtime.lastError', 'intrinsics', 'message channel closed', 'i18next'];
+          if (ignore.some(term => message && message.toLowerCase().includes(term.toLowerCase()))) return false;
           console.error("Error Detectado:", message);
-          const root = document.getElementById('root');
-          // Solo mostrar pantalla de error si el root está vacío después de un tiempo prudencial
-          if (root && root.innerHTML.trim() === '') {
-            root.innerHTML = `
-              <div style="padding:40px; color:#2c1810; background:#fff; border:2px solid #5d4037; border-radius:24px; margin:20px; font-family:serif; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-width: 600px; margin: 40px auto; text-align: center;">
-                <h2 style="margin-top:0; color:#1b5e20; font-size: 24px;">Sistema Profesional de Altanería</h2>
-                <p style="color: #666; line-height: 1.6;">Iniciando el sistema...</p>
-                <p style="font-size: 12px; color: #999;">Si esta pantalla persiste, puede haber un conflicto técnico.</p>
-                <div style="background:#f8f8f8; padding:15px; border-radius:12px; font-family:monospace; font-size:11px; margin:20px 0; text-align: left; border: 1px solid #eee; overflow-x: auto;">
-                  ${message}
-                </div>
-                <button onclick="window.location.reload()" style="background:#1b5e20; color:white; border:none; padding:12px 24px; border-radius:12px; cursor:pointer; font-weight:bold; font-family:sans-serif;">
-                  Forzar Reinicio
-                </button>
-              </div>`;
-          }
         };
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #fcfcf9; margin: 0; padding: 0; }
-        h1, h2, h3 { font-family: 'Playfair Display', serif; }
+        body { font-family: 'Inter', sans-serif; background-color: #fcfcf9; margin: 0; overflow-x: hidden; }
+        h1, h2, h3, .font-serif { font-family: 'Playfair Display', serif; }
         .bg-field-green { background-color: #1B5E20; }
         .text-field-green { color: #1B5E20; }
         .bg-falcon-brown { background-color: #5D4037; }
         .text-falcon-brown { color: #5D4037; }
-        .border-falcon-brown { border-color: #5D4037; }
-        .shadow-professional { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02); }
+        .shadow-professional { box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.08), 0 18px 36px -18px rgba(0, 0, 0, 0.05); }
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .animate-in { animation: fadeIn 0.6s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
     <script type="importmap">
 {

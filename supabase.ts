@@ -1,9 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-/**
- * Acceso seguro a variables de entorno inyectadas.
- */
 const getEnv = (key: string): string => {
   try {
     // @ts-ignore
@@ -13,21 +10,26 @@ const getEnv = (key: string): string => {
   }
 };
 
+// URL y Key por defecto o desde entorno
 const supabaseUrl = getEnv('SUPABASE_URL') || 'https://hxpvgtlmjxmsrmaxfqag.supabase.co';
 const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
 
-// Solo inicializamos si tenemos una clave válida de longitud suficiente
 export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.length > 20) 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      realtime: {
+        params: {
+          eventsPerSecond: 10
+        }
+      }
+    }) 
   : null;
 
 if (!supabase) {
-  console.info("Supabase: Iniciando en MODO LOCAL (Sin persistencia en la nube).");
+  console.warn("Supabase: Modo Local activo. Los cambios no se guardarán en la nube.");
 }
 
 export async function saveChatHistory(userId: string, userMessage: string, aiResponse: string) {
   if (!supabase) return { data: null, error: null };
-
   try {
     const { data, error } = await supabase
       .from('historial_chats')
