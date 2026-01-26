@@ -1,7 +1,6 @@
-
 import { createClient } from '@supabase/supabase-js';
 
-// Intentar obtener las variables desde process.env o window.process.env
+// Función para obtener variables de entorno de forma segura en navegador
 const getEnv = (key: string): string => {
   if (typeof process !== 'undefined' && process.env && process.env[key]) {
     return process.env[key] as string;
@@ -12,18 +11,22 @@ const getEnv = (key: string): string => {
   return '';
 };
 
+// URL y Key del proyecto hxpvgtlmjxmsrmaxfqag
 const supabaseUrl = getEnv('SUPABASE_URL') || 'https://hxpvgtlmjxmsrmaxfqag.supabase.co';
 const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
 
-// Solo inicializar si tenemos la clave anon
+// Inicializar el cliente solo si existe la clave anon
 export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.length > 10) 
-  ? createClient(supabaseUrl, supabaseAnonKey) 
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: true },
+      db: { schema: 'public' }
+    }) 
   : null;
 
 if (!supabase) {
-  console.warn("⚠️ SUPABASE OFFLINE: No se detectó la clave de API. Los cambios se guardarán solo localmente.");
+  console.warn("⚠️ MODO LOCAL: No se detectó SUPABASE_ANON_KEY. Los datos se guardarán solo en este navegador.");
 } else {
-  console.log("✅ SUPABASE ONLINE: Conectado al proyecto hxpvgtlmjxmsrmaxfqag.");
+  console.log("✅ CONECTADO A SUPABASE: Proyecto hxpvgtlmjxmsrmaxfqag listo.");
 }
 
 export async function saveChatHistory(userId: string, userMessage: string, aiResponse: string) {

@@ -1,9 +1,7 @@
-
 import React, { useState } from 'react';
 import { AppState, Championship, FlightData } from '../types.ts';
 import { supabase } from '../supabase.ts';
-// Fixed: Added Clock to the imported icons from lucide-react
-import { Plus, Trash2, Edit3, Gavel, Clock } from 'lucide-react';
+import { Plus, Trash2, Edit3, Gavel, Clock, Save, CloudOff, Cloud } from 'lucide-react';
 import FlightScoringForm from './FlightScoringForm.tsx';
 import TechnicalAssistant from './TechnicalAssistant.tsx';
 
@@ -17,15 +15,38 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
   const [editingFlightId, setEditingFlightId] = useState<string | null>(null);
   const [isAddingParticipant, setIsAddingParticipant] = useState(false);
   const [newChamp, setNewChamp] = useState({ name: '', date: '', location: '' });
+  const [syncing, setSyncing] = useState(false);
 
   const selectedChamp = state.championships.find(c => c.id === state.selectedChampionshipId);
 
-  const updatePersistence = (championships: Championship[]) => {
-    // Si no hay Supabase, se guarda en LocalStorage
-    if (!supabase) {
-      localStorage.setItem('altaneria_championships', JSON.stringify(championships));
+  // Función unificada para actualizar estado local y persistencia
+  const pushUpdate = async (updatedChampionships: Championship[]) => {
+    setSyncing(true);
+    // 1. Actualizar estado de React inmediatamente (UI fluida)
+    onUpdateState({ championships: updatedChampionships });
+    
+    // 2. Guardar en LocalStorage como respaldo
+    localStorage.setItem('altaneria_championships', JSON.stringify(updatedChampionships));
+
+    // 3. Sincronizar con Supabase si está disponible
+    if (supabase && state.selectedChampionshipId) {
+      const current = updatedChampionships.find(c => c.id === state.selectedChampionshipId);
+      if (current) {
+        try {
+          const { error } = await supabase
+            .from('championships')
+            .upsert(current, { onConflict: 'id' });
+          
+          if (error) {
+            console.error("Error sincronizando:", error.message);
+            // Opcional: Mostrar notificación de error silenciosa
+          }
+        } catch (e) {
+          console.error("Fallo de red al sincronizar:", e);
+        }
+      }
     }
-    onUpdateState({ championships });
+    setSyncing(false);
   };
 
   const handleCreateChamp = async (e: React.FormEvent) => {
@@ -40,14 +61,9 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
       createdAt: Date.now()
     };
 
-    if (supabase) {
-      const { error } = await supabase.from('championships').insert([champ]);
-      if (error) return alert('Error al crear torneo: ' + error.message);
-      // Recargar estados se maneja por la suscripción en App.tsx
-    } else {
-      updatePersistence([champ, ...state.championships]);
-    }
-
+    const updatedChamps = [champ, ...state.championships];
+    await pushUpdate(updatedChamps);
+    
     setIsCreating(false);
     setNewChamp({ name: '', date: '', location: '' });
     onUpdateState({ selectedChampionshipId: champ.id });
@@ -55,67 +71,52 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
 
   const deleteChamp = async (id: string) => {
     if (!confirm('¿Seguro que desea eliminar este campeonato permanentemente?')) return;
+    
+    const updatedChamps = state.championships.filter(c => c.id !== id);
+    
     if (supabase) {
-      const { error } = await supabase.from('championships').delete().eq('id', id);
-      if (error) alert('Error al eliminar: ' + error.message);
-    } else {
-      updatePersistence(state.championships.filter(c => c.id !== id));
-      if (state.selectedChampionshipId === id) onUpdateState({ selectedChampionshipId: null });
+      await supabase.from('championships').delete().eq('id', id);
     }
+    
+    pushUpdate(updatedChamps);
+    if (state.selectedChampionshipId === id) onUpdateState({ selectedChampionshipId: null });
   };
 
   const deleteParticipant = async (flightId: string) => {
     if (!selectedChamp || !confirm('¿Eliminar participante del vuelo?')) return;
     const updatedParticipants = selectedChamp.participants.filter(f => f.id !== flightId);
     
-    if (supabase) {
-      const { error } = await supabase
-        .from('championships')
-        .update({ participants: updatedParticipants })
-        .eq('id', selectedChamp.id);
-      if (error) alert('Error al guardar cambios: ' + error.message);
-    } else {
-      const updatedChamps = state.championships.map(c => c.id === selectedChamp.id ? { ...c, participants: updatedParticipants } : c);
-      updatePersistence(updatedChamps);
-    }
+    const updatedChamps = state.championships.map(c => 
+      c.id === selectedChamp.id ? { ...c, participants: updatedParticipants } : c
+    );
+    
+    pushUpdate(updatedChamps);
   };
 
   const saveParticipant = async (data: FlightData, isUpdate: boolean) => {
     if (!selectedChamp) return;
+    
     const updatedParticipants = isUpdate 
       ? selectedChamp.participants.map(p => p.id === data.id ? data : p)
       : [...selectedChamp.participants, data];
 
-    if (supabase) {
-      const { error } = await supabase
-        .from('championships')
-        .update({ participants: updatedParticipants })
-        .eq('id', selectedChamp.id);
-      
-      if (error) {
-        alert('Error al sincronizar con Supabase: ' + error.message);
-      } else {
-        console.log("🚀 Sincronización exitosa con la base de datos.");
-      }
-    } else {
-      const updatedChamps = state.championships.map(c => c.id === selectedChamp.id ? { ...c, participants: updatedParticipants } : c);
-      updatePersistence(updatedChamps);
-    }
+    const updatedChamps = state.championships.map(c => 
+      c.id === selectedChamp.id ? { ...c, participants: updatedParticipants } : c
+    );
+
+    await pushUpdate(updatedChamps);
     setIsAddingParticipant(false);
     setEditingFlightId(null);
   };
 
   const togglePublic = async (id: string) => {
-    if (supabase) {
-      // Desactivar otros públicos primero (lógica simple de un solo campeonato público a la vez)
-      await supabase.from('championships').update({ isPublic: false }).neq('id', '0');
-      const { error } = await supabase.from('championships').update({ isPublic: true }).eq('id', id);
-      if (error) alert(error.message);
-    } else {
-      const updatedChamps = state.championships.map(c => ({ ...c, isPublic: c.id === id }));
-      updatePersistence(updatedChamps);
-      onUpdateState({ publicChampionshipId: id });
-    }
+    const updatedChamps = state.championships.map(c => ({ 
+      ...c, 
+      isPublic: c.id === id 
+    }));
+    
+    await pushUpdate(updatedChamps);
+    onUpdateState({ publicChampionshipId: id });
   };
 
   const emptyFlight = (): FlightData => ({
@@ -131,26 +132,43 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
           <div className="bg-white p-6 rounded-2xl shadow-md flex justify-between items-center border border-gray-100">
-            <div>
-              <h2 className="text-xl font-black text-falcon-brown uppercase tracking-tight">Gestión de Torneos</h2>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Panel de Control Arbitral</p>
+            <div className="flex items-center gap-4">
+              <div>
+                <h2 className="text-xl font-black text-falcon-brown uppercase tracking-tight">Gestión de Torneos</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Panel de Control Arbitral</p>
+                  {syncing ? (
+                    <span className="flex items-center gap-1 text-[9px] text-field-green font-black animate-pulse">
+                      <Cloud className="w-3 h-3" /> Sincronizando...
+                    </span>
+                  ) : supabase ? (
+                    <span className="flex items-center gap-1 text-[9px] text-field-green font-black opacity-40">
+                      <Cloud className="w-3 h-3" /> Conectado
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-[9px] text-orange-400 font-black">
+                      <CloudOff className="w-3 h-3" /> Modo Local
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
             <button onClick={() => setIsCreating(true)} className="bg-field-green text-white px-6 py-3 rounded-xl flex items-center gap-2 font-black uppercase text-xs tracking-widest hover:bg-green-800 transition-all shadow-lg">
-              <Plus className="w-4 h-4" /> Nuevo Campeonato
+              <Plus className="w-4 h-4" /> Nuevo Torneo
             </button>
           </div>
 
           {isCreating && (
             <form onSubmit={handleCreateChamp} className="bg-white p-8 rounded-3xl shadow-2xl space-y-4 border-2 border-field-green/20 animate-in zoom-in-95 duration-300">
               <h4 className="font-black text-xs uppercase tracking-widest text-field-green mb-4">Configuración del Torneo</h4>
-              <input required placeholder="Nombre del Campeonato (ej: Trofeo Aceca)" value={newChamp.name} onChange={e => setNewChamp({...newChamp, name: e.target.value})} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-field-green" />
+              <input required placeholder="Nombre del Campeonato" value={newChamp.name} onChange={e => setNewChamp({...newChamp, name: e.target.value})} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-field-green" />
               <div className="flex gap-4">
                 <input required type="date" value={newChamp.date} onChange={e => setNewChamp({...newChamp, date: e.target.value})} className="flex-1 px-4 py-3 border rounded-xl outline-none" />
-                <input required placeholder="Localización" value={newChamp.location} onChange={e => setNewChamp({...newChamp, location: e.target.value})} className="flex-1 px-4 py-3 border rounded-xl outline-none" />
+                <input required placeholder="Lugar" value={newChamp.location} onChange={e => setNewChamp({...newChamp, location: e.target.value})} className="flex-1 px-4 py-3 border rounded-xl outline-none" />
               </div>
               <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setIsCreating(false)} className="px-6 py-3 font-bold text-gray-400 hover:text-gray-600">Descartar</button>
-                <button type="submit" className="bg-field-green text-white px-8 py-3 rounded-xl font-black uppercase text-xs tracking-widest">Confirmar Torneo</button>
+                <button type="button" onClick={() => setIsCreating(false)} className="px-6 py-3 font-bold text-gray-400 hover:text-gray-600">Cancelar</button>
+                <button type="submit" className="bg-field-green text-white px-8 py-3 rounded-xl font-black uppercase text-xs tracking-widest">Crear Torneo</button>
               </div>
             </form>
           )}
@@ -181,7 +199,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                 <div className="space-y-3">
                   {selectedChamp.participants.length === 0 ? (
                     <div className="text-center py-20 bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-100">
-                      <p className="text-gray-400 font-medium">No hay participantes registrados en este torneo.</p>
+                      <p className="text-gray-400 font-medium">No hay vuelos registrados.</p>
                     </div>
                   ) : (
                     selectedChamp.participants.sort((a,b) => b.totalPoints - a.totalPoints).map((p, i) => (
@@ -218,8 +236,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
           ) : (
             <div className="bg-white rounded-[40px] p-24 text-center border-2 border-dashed border-gray-200 shadow-inner">
                <Gavel className="w-16 h-16 mx-auto mb-4 text-gray-100" />
-               <h3 className="text-xl font-bold text-gray-300 uppercase tracking-widest">Sin Torneo Seleccionado</h3>
-               <p className="text-gray-400 text-sm max-w-xs mx-auto mt-2">Seleccione un campeonato del historial lateral o cree uno nuevo para comenzar la evaluación técnica.</p>
+               <h3 className="text-xl font-bold text-gray-300 uppercase tracking-widest">Seleccione un Torneo</h3>
             </div>
           )}
         </div>
@@ -231,20 +248,19 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
               <Clock className="w-4 h-4" /> Historial de Torneos
             </h3>
             <div className="space-y-3">
-              {state.championships.length === 0 && <p className="text-center text-xs text-gray-300 italic">No hay registros previos.</p>}
               {state.championships.map(champ => (
                 <div 
                   key={champ.id} 
                   className={`group p-4 rounded-2xl cursor-pointer border-2 transition-all ${
                     state.selectedChampionshipId === champ.id 
-                      ? 'bg-falcon-brown border-falcon-brown text-white shadow-lg shadow-falcon-brown/20' 
+                      ? 'bg-falcon-brown border-falcon-brown text-white shadow-lg' 
                       : 'border-transparent bg-gray-50 hover:bg-white hover:border-falcon-brown/20'
                   }`} 
                   onClick={() => onUpdateState({ selectedChampionshipId: champ.id })}
                 >
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1 min-w-0">
-                      <span className="font-black text-sm uppercase block truncate group-hover:tracking-wider transition-all">
+                      <span className="font-black text-sm uppercase block truncate">
                         {champ.name}
                       </span>
                       <span className={`text-[9px] font-bold uppercase ${state.selectedChampionshipId === champ.id ? 'text-white/60' : 'text-gray-400'}`}>
@@ -266,7 +282,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                         : (state.selectedChampionshipId === champ.id ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-200 text-gray-400 hover:border-field-green hover:text-field-green')
                     }`}
                   >
-                    {champ.isPublic ? "Emitiendo en Directo" : "Activar Transmisión"}
+                    {champ.isPublic ? "Transmitiendo" : "Publicar"}
                   </button>
                 </div>
               ))}
