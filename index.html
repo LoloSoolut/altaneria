@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Competiciones de Altanería</title>
+    <title>COMPETICIONES DE ALTANERÍA PARA PROFESIONALES</title>
     <script>
-        // Definición ultra-segura de process para evitar ReferenceError
+        // Polyfill robusto para process.env
         window.process = { 
           env: {
             API_KEY: "",
@@ -14,13 +14,7 @@
             SUPABASE_ANON_KEY: ""
           } 
         };
-        // Alias global para mayor compatibilidad
         var process = window.process;
-        
-        window.onerror = function(msg, url, lineNo, columnNo, error) {
-            console.error('Error Crítico:', msg, 'en', url, 'línea:', lineNo);
-            return false;
-        };
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
