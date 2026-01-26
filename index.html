@@ -16,15 +16,27 @@
         
         // Captura de errores de carga y CSP
         window.onerror = function(message, source, lineno, colno, error) {
-          if (message.includes('MetaMask') || message.includes('extension')) return;
-          console.error("Error Crítico:", message);
+          // Filtrar errores comunes de extensiones y sandbox que no son críticos para la app
+          const ignoreList = [
+            'MetaMask',
+            'extension',
+            'runtime.lastError',
+            'intrinsics',
+            'unknown module'
+          ];
+          
+          if (ignoreList.some(term => message.toLowerCase().includes(term.toLowerCase()))) {
+            return false; // No mostrar estos errores en la UI
+          }
+
+          console.error("Error Crítico de Aplicación:", message);
           const root = document.getElementById('root');
           if (root && root.innerHTML === '') {
             root.innerHTML = `
               <div style="padding:30px; color:#2c1810; background:#fff; border:2px solid #5d4037; border-radius:16px; margin:20px; font-family:serif; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
                 <h2 style="margin-top:0; color:#1b5e20;">Sistema de Altanería Profesional</h2>
-                <p>No se pudo cargar la interfaz debido a una restricción de seguridad o de conexión.</p>
-                <div style="background:#f1f1f1; padding:10px; border-radius:8px; font-family:monospace; font-size:12px; margin:15px 0;">
+                <p>No se pudo iniciar la interfaz correctamente. Esto puede deberse a un bloqueo de seguridad del navegador o una extensión.</p>
+                <div style="background:#f1f1f1; padding:10px; border-radius:8px; font-family:monospace; font-size:12px; margin:15px 0; overflow-x: auto;">
                   ${message}
                 </div>
                 <button onclick="window.location.reload()" style="background:#1b5e20; color:white; border:none; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:bold;">Reintentar Carga</button>
