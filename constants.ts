@@ -1,6 +1,9 @@
 
 import { CapturaType } from './types.ts';
 
+// Centralized version constant to avoid scope errors across components
+export const APP_VERSION = "1.3.4";
+
 export const SCORING = {
   // 0.1 points per meter
   calculateAlturaPoints: (meters: number) => meters * 0.1,

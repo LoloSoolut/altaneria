@@ -20,7 +20,8 @@ import {
 
 // Corrección de rutas: Aseguramos el uso de rutas relativas locales
 import FlightScoringForm from './FlightScoringForm.tsx';
-import { SCORING } from '../constants.ts';
+// Fix: Import APP_VERSION from constants
+import { SCORING, APP_VERSION } from '../constants.ts';
 
 interface Props {
   state: AppState;
@@ -194,7 +195,6 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
   };
 
   const togglePublic = async (id: string) => {
-    // Si ya es público, lo quitamos. Si no lo es, lo ponemos y quitamos los demás.
     const isCurrentlyPublic = state.publicChampionshipId === id;
     const newPublicId = isCurrentlyPublic ? null : id;
     
@@ -209,9 +209,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
     if (supabase) {
       setSyncing(true);
       try {
-        // Desactivamos todos en Supabase
         await supabase.from('championships').update({ isPublic: false }).neq('id', '00000000-0000-0000-0000-000000000000');
-        // Si activamos uno nuevo, lo marcamos
         if (newPublicId) {
           await supabase.from('championships').update({ isPublic: true }).eq('id', newPublicId);
         }
@@ -232,107 +230,116 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-1">
       <div className={`px-5 py-3 rounded-2xl flex items-center justify-between transition-all ${!supabase ? 'bg-orange-50 border border-orange-100 text-orange-600' : lastError ? 'bg-red-50 border border-red-100 text-red-600' : 'bg-green-50 border border-green-100 text-field-green'}`}>
         <div className="flex items-center gap-3">
           {syncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : supabase ? <Cloud className="w-4 h-4" /> : <CloudOff className="w-4 h-4" />}
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest leading-none">Estado de Conexión</p>
-            <p className="text-xs font-bold mt-1">{!supabase ? "Modo Local Seguro" : lastError ? `Error: ${lastError}` : "Nube Sincronizada y Activa"}</p>
+          <div className="hidden sm:block">
+            <p className="text-[10px] font-black uppercase tracking-widest leading-none">Conexión</p>
+            <p className="text-xs font-bold mt-1">{!supabase ? "Modo Local" : lastError ? "Error Red" : "Nube Activa"}</p>
           </div>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-2xl shadow-md flex flex-col sm:flex-row justify-between items-center border border-gray-100 gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-field-green/10 rounded-xl flex items-center justify-center">
-                <Gavel className="w-6 h-6 text-field-green" />
+      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6 order-2 lg:order-1">
+          <div className="bg-white p-5 md:p-8 rounded-[32px] shadow-professional flex flex-col sm:flex-row justify-between items-center border border-gray-100 gap-6">
+            <div className="flex items-center gap-4 text-center sm:text-left">
+              <div className="hidden sm:flex w-14 h-14 bg-field-green/10 rounded-2xl items-center justify-center">
+                <Gavel className="w-7 h-7 text-field-green" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-falcon-brown uppercase tracking-tight">Jurado Profesional</h2>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Gestión de Actas y Resultados</p>
+                <h2 className="text-2xl font-black text-falcon-brown uppercase tracking-tight leading-none">Jurado</h2>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">v{APP_VERSION} PRO</p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
               {selectedChamp && (
-                <button onClick={exportToPDF} title="Exportar Clasificación PDF" className="bg-yellow-600 text-white px-5 py-3 rounded-xl flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:bg-yellow-700 transition-all shadow-lg active:scale-95">
-                  <FileDown className="w-4 h-4" /> Exportar PDF
+                <button onClick={exportToPDF} className="bg-yellow-600 text-white px-6 py-4 rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-[10px] tracking-widest hover:bg-yellow-700 transition-all shadow-lg active:scale-95">
+                  <FileDown className="w-4 h-4" /> PDF Acta
                 </button>
               )}
-              <button onClick={() => setIsCreating(true)} className="bg-field-green text-white px-6 py-3 rounded-xl flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:bg-green-800 transition-all shadow-lg active:scale-95">
-                <Plus className="w-4 h-4" /> Nuevo Campeonato
+              <button onClick={() => setIsCreating(true)} className="bg-field-green text-white px-6 py-4 rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-[10px] tracking-widest hover:bg-green-800 transition-all shadow-lg active:scale-95">
+                <Plus className="w-4 h-4" /> Nuevo Evento
               </button>
             </div>
           </div>
 
           {isCreating && (
-            <form onSubmit={handleCreateChamp} className="bg-white p-8 rounded-3xl shadow-2xl space-y-4 border-2 border-field-green/20 animate-in zoom-in-95 duration-300">
-              <input required placeholder="Nombre del Campeonato" value={newChamp.name} onChange={e => setNewChamp({...newChamp, name: e.target.value})} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-field-green" />
-              <div className="flex gap-4">
-                <input required type="date" value={newChamp.date} onChange={e => setNewChamp({...newChamp, date: e.target.value})} className="flex-1 px-4 py-3 border rounded-xl outline-none" />
-                <input required placeholder="Localidad / Provincia" value={newChamp.location} onChange={e => setNewChamp({...newChamp, location: e.target.value})} className="flex-1 px-4 py-3 border rounded-xl outline-none" />
+            <form onSubmit={handleCreateChamp} className="bg-white p-6 md:p-8 rounded-[40px] shadow-2xl space-y-5 border-4 border-field-green/10 animate-in zoom-in-95 duration-300">
+              <div className="space-y-1">
+                <label className="text-[10px] uppercase font-black text-gray-400 ml-1">Nombre Competición</label>
+                <input required placeholder="Ej: Trofeo de Altanería..." value={newChamp.name} onChange={e => setNewChamp({...newChamp, name: e.target.value})} className="w-full px-5 py-4 border rounded-2xl outline-none focus:ring-4 focus:ring-field-green/10 focus:border-field-green transition-all" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-black text-gray-400 ml-1">Fecha</label>
+                  <input required type="date" value={newChamp.date} onChange={e => setNewChamp({...newChamp, date: e.target.value})} className="w-full px-5 py-4 border rounded-2xl outline-none" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] uppercase font-black text-gray-400 ml-1">Localización</label>
+                  <input required placeholder="Ciudad, Provincia..." value={newChamp.location} onChange={e => setNewChamp({...newChamp, location: e.target.value})} className="w-full px-5 py-4 border rounded-2xl outline-none" />
+                </div>
               </div>
               <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setIsCreating(false)} className="px-6 py-3 font-bold text-gray-400 hover:text-gray-600 uppercase text-xs">Cancelar</button>
-                <button type="submit" className="bg-field-green text-white px-8 py-3 rounded-xl font-black uppercase text-xs tracking-widest">Crear Ahora</button>
+                <button type="button" onClick={() => setIsCreating(false)} className="px-6 py-4 font-black text-gray-400 hover:text-gray-600 uppercase text-[10px] tracking-widest">Descartar</button>
+                <button type="submit" className="bg-field-green text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl">Crear Campeonato</button>
               </div>
             </form>
           )}
 
           {selectedChamp ? (
-            <div className="bg-white rounded-[32px] shadow-xl p-8 border border-gray-100">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 border-b pb-6 gap-4">
+            <div className="bg-white rounded-[40px] shadow-xl p-6 md:p-10 border border-gray-100">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 border-b pb-8 gap-6">
                 <div>
-                  <h3 className="text-2xl font-black text-field-green uppercase tracking-tight leading-none">{selectedChamp.name}</h3>
-                  <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-widest">{selectedChamp.location} — {selectedChamp.date}</p>
+                  <h3 className="text-3xl font-black text-field-green uppercase tracking-tight leading-none">{selectedChamp.name}</h3>
+                  <p className="text-[10px] text-gray-400 font-bold mt-2 uppercase tracking-widest italic">{selectedChamp.location} — {selectedChamp.date}</p>
                 </div>
                 {!editingFlightId && !isAddingParticipant && (
-                  <button onClick={() => setIsAddingParticipant(true)} className="bg-falcon-brown text-white px-6 py-3 rounded-xl flex items-center gap-2 font-black uppercase text-xs tracking-widest hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-falcon-brown/20">
-                    <Plus className="w-4 h-4" /> Registrar Vuelo
+                  <button onClick={() => setIsAddingParticipant(true)} className="w-full md:w-auto bg-falcon-brown text-white px-8 py-5 rounded-2xl flex items-center justify-center gap-3 font-black uppercase text-[10px] tracking-widest hover:opacity-90 transition-all active:scale-95 shadow-xl shadow-falcon-brown/20">
+                    <Plus className="w-5 h-5" /> Registrar Vuelo
                   </button>
                 )}
               </div>
 
               {isAddingParticipant ? (
-                <div className="animate-in slide-in-from-top-4 duration-500">
+                <div className="animate-in slide-in-from-top-6 duration-500">
                   <FlightScoringForm flight={emptyFlight()} onSave={(d) => saveParticipant(d, false)} onCancel={() => setIsAddingParticipant(false)} />
                 </div>
               ) : editingFlightId ? (
-                <div className="animate-in slide-in-from-top-4 duration-500">
+                <div className="animate-in slide-in-from-top-6 duration-500">
                   <FlightScoringForm flight={selectedChamp.participants.find(f => f.id === editingFlightId)!} onSave={(d) => saveParticipant(d, true)} onCancel={() => setEditingFlightId(null)} />
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-4">
                   {selectedChamp.participants.length === 0 ? (
-                    <div className="text-center py-20 bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-100">
-                      <Bird className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                      <p className="text-gray-400 font-medium italic">Sin vuelos registrados en este campeonato.</p>
+                    <div className="text-center py-24 bg-gray-50 rounded-[40px] border-4 border-dashed border-gray-200">
+                      <Bird className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+                      <p className="text-gray-400 font-black uppercase tracking-[0.2em] text-xs">Esperando registros técnicos...</p>
                     </div>
                   ) : (
                     selectedChamp.participants.sort((a,b) => b.totalPoints - a.totalPoints).map((p, i) => (
-                      <div key={p.id} className="group flex items-center justify-between p-5 border border-gray-100 rounded-2xl hover:bg-green-50/30 transition-all hover:shadow-sm">
-                        <div className="flex items-center gap-5">
-                          <span className={`w-10 h-10 rounded-xl flex items-center justify-center font-black transition-colors ${i < 3 ? 'bg-field-green text-white shadow-md' : 'bg-gray-50 text-gray-300'}`}>
+                      <div key={p.id} className="group flex flex-col sm:flex-row items-center justify-between p-6 border-2 border-gray-50 rounded-3xl hover:bg-green-50/40 transition-all hover:border-field-green/10">
+                        <div className="flex items-center gap-6 w-full sm:w-auto mb-4 sm:mb-0">
+                          <span className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg transition-colors shadow-sm ${i < 3 ? 'bg-field-green text-white' : 'bg-gray-100 text-gray-300'}`}>
                             {i+1}
                           </span>
                           <div>
-                            <p className="font-black text-gray-800 leading-none mb-1">{p.falconerName}</p>
-                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{p.falconName}</p>
+                            <p className="font-black text-xl text-gray-800 leading-none mb-1 group-hover:text-field-green transition-colors">{p.falconerName}</p>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">{p.falconName}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-6">
-                          <div className="text-right hidden sm:block">
-                            <p className="text-sm font-black text-field-green">{p.totalPoints.toFixed(2)} pts</p>
-                            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">{p.alturaServicio}m techo</p>
+                        <div className="flex items-center justify-between sm:justify-end gap-8 w-full sm:w-auto border-t sm:border-t-0 pt-4 sm:pt-0">
+                          <div className="text-left sm:text-right">
+                            <p className="text-2xl font-black text-field-green">{p.totalPoints === 0 ? 'DESC.' : p.totalPoints.toFixed(2)}</p>
+                            <p className="text-[10px] text-gray-400 font-black uppercase tracking-tighter">{p.alturaServicio}m techo</p>
                           </div>
-                          <div className="flex items-center gap-2 border-l pl-4">
-                            <button onClick={() => setEditingFlightId(p.id)} className="p-2.5 text-falcon-brown hover:bg-falcon-brown hover:text-white rounded-lg transition-all" title="Editar Acta">
-                              <Edit3 className="w-4 h-4" />
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => setEditingFlightId(p.id)} className="p-4 text-falcon-brown bg-gray-100 hover:bg-falcon-brown hover:text-white rounded-2xl transition-all shadow-sm" title="Editar">
+                              <Edit3 className="w-5 h-5" />
                             </button>
-                            <button onClick={() => deleteParticipant(p.id)} className="p-2.5 text-red-200 hover:bg-red-500 hover:text-white rounded-lg transition-all" title="Eliminar">
-                              <Trash2 className="w-4 h-4" />
+                            <button onClick={() => deleteParticipant(p.id)} className="p-4 text-red-300 bg-gray-100 hover:bg-red-500 hover:text-white rounded-2xl transition-all shadow-sm" title="Eliminar">
+                              <Trash2 className="w-5 h-5" />
                             </button>
                           </div>
                         </div>
@@ -343,38 +350,45 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-[40px] p-24 text-center border-2 border-dashed border-gray-200 shadow-inner flex flex-col items-center">
-               <ScrollText className="w-16 h-16 text-gray-100 mb-6" />
-               <h3 className="text-xl font-black text-gray-300 uppercase tracking-widest">Seleccione un Campeonato</h3>
-               <p className="text-gray-400 text-sm mt-2 max-w-xs">Elija un campeonato del historial lateral para gestionar sus resultados.</p>
+            <div className="bg-white rounded-[40px] p-24 text-center border-4 border-dashed border-gray-100 shadow-inner flex flex-col items-center justify-center animate-in fade-in duration-1000">
+               <ScrollText className="w-20 h-20 text-gray-100 mb-8" />
+               <h3 className="text-2xl font-black text-gray-300 uppercase tracking-[0.3em]">Selección de Competición</h3>
+               <p className="text-gray-400 text-sm mt-3 max-w-sm font-medium">Elija un campeonato del historial técnico para gestionar las actas de vuelo y clasificaciones.</p>
             </div>
           )}
         </div>
 
-        <div className="space-y-6">
-          <div className="bg-white p-8 rounded-[32px] shadow-lg border border-gray-100">
-            <h3 className="font-black text-[10px] uppercase tracking-[0.2em] mb-6 text-gray-400 flex items-center gap-2 border-b pb-4">
-              <Clock className="w-4 h-4" /> Historial de Eventos
+        <div className="lg:col-span-1 space-y-8 order-1 lg:order-2">
+          <div className="bg-white p-8 rounded-[40px] shadow-professional border border-gray-100 sticky top-32">
+            <h3 className="font-black text-[11px] uppercase tracking-[0.3em] mb-8 text-gray-400 flex items-center gap-3 border-b pb-5">
+              <Clock className="w-5 h-5" /> Historial de Eventos
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+              {state.championships.length === 0 && (
+                <p className="text-center text-gray-300 text-[10px] font-black uppercase py-10">Historial Vacío</p>
+              )}
               {state.championships.map(champ => {
                 const isCurrentlyPublic = state.publicChampionshipId === champ.id;
+                const isSelected = state.selectedChampionshipId === champ.id;
                 return (
-                  <div key={champ.id} className={`group p-4 rounded-2xl cursor-pointer border-2 transition-all ${state.selectedChampionshipId === champ.id ? 'bg-falcon-brown border-falcon-brown text-white shadow-xl' : 'border-transparent bg-gray-50 hover:bg-white hover:border-falcon-brown/20'}`} onClick={() => onUpdateState({ selectedChampionshipId: champ.id })}>
-                    <div className="flex justify-between items-start mb-3">
-                      <div className="flex-1 min-w-0"><span className="font-black text-xs uppercase block truncate">{champ.name}</span></div>
-                      <button onClick={(e) => { e.stopPropagation(); deleteChamp(champ.id); }} className={`p-1.5 rounded-lg transition-colors ${state.selectedChampionshipId === champ.id ? 'hover:bg-white/10 text-white' : 'text-red-300 hover:text-red-500 hover:bg-red-50'}`}><Trash2 className="w-3.5 h-3.5"/></button>
+                  <div key={champ.id} className={`group p-5 rounded-3xl cursor-pointer border-2 transition-all duration-300 ${isSelected ? 'bg-falcon-brown border-falcon-brown text-white shadow-2xl scale-[1.02]' : 'border-transparent bg-gray-50 hover:bg-white hover:border-falcon-brown/20'}`} onClick={() => onUpdateState({ selectedChampionshipId: champ.id })}>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1 min-w-0">
+                        <span className="font-black text-sm uppercase block truncate tracking-tight">{champ.name}</span>
+                        <p className={`text-[9px] font-bold uppercase mt-1 opacity-60 ${isSelected ? 'text-white' : 'text-gray-400'}`}>{champ.date}</p>
+                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); deleteChamp(champ.id); }} className={`p-2 rounded-xl transition-all ${isSelected ? 'hover:bg-white/10 text-white opacity-40 hover:opacity-100' : 'text-red-200 hover:text-red-500 hover:bg-red-50'}`}><Trash2 className="w-4 h-4"/></button>
                     </div>
                     <button 
                       onClick={(e) => { e.stopPropagation(); togglePublic(champ.id); }} 
-                      className={`w-full text-[9px] py-2.5 rounded-xl border-2 uppercase font-black tracking-widest transition-all flex items-center justify-center gap-2 ${
+                      className={`w-full text-[9px] py-3.5 rounded-2xl border-2 uppercase font-black tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
                         isCurrentlyPublic 
-                          ? (state.selectedChampionshipId === champ.id ? 'bg-white text-field-green border-white shadow-md' : 'bg-field-green text-white border-field-green shadow-md') 
-                          : (state.selectedChampionshipId === champ.id ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-200 text-gray-400 hover:border-field-green hover:text-field-green')
+                          ? (isSelected ? 'bg-white text-field-green border-white shadow-xl' : 'bg-field-green text-white border-field-green shadow-xl') 
+                          : (isSelected ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-200 text-gray-400 hover:border-field-green hover:text-field-green')
                       }`}
                     >
-                      {isCurrentlyPublic ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                      {isCurrentlyPublic ? "Retirar de Público" : "Activar Resultados Públicos"}
+                      {isCurrentlyPublic ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {isCurrentlyPublic ? "Ocultar Público" : "Activar Público"}
                     </button>
                   </div>
                 );

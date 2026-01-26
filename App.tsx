@@ -5,9 +5,8 @@ import JudgePanel from './components/JudgePanel.tsx';
 import PublicView from './components/PublicView.tsx';
 import { supabase } from './supabase.ts';
 import { Trophy, Gavel, Users, ShieldCheck, Loader2, AlertCircle, Bird } from 'lucide-react';
-
-// v1.3.4 - Actualización de Imagen de Portada Gerifalte Oficial
-const APP_VERSION = "1.3.4"; 
+// Fix: Import APP_VERSION from centralized constants to avoid scope errors
+import { APP_VERSION } from './constants.ts';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'home' | 'judge' | 'public'>('home');
