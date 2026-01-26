@@ -1,18 +1,28 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@^2.39.0';
-
-const supabaseUrl = process.env.SUPABASE_URL || 'https://hxpvgtlmjxmsrmaxfqag.supabase.co';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0';
 
 /**
- * Inicialización segura de Supabase.
+ * Acceso seguro a variables de entorno inyectadas por Vercel u otros entornos.
  */
+const getEnv = (key: string): string => {
+  try {
+    // @ts-ignore
+    return window.process?.env?.[key] || (typeof process !== 'undefined' ? process.env[key] : '') || '';
+  } catch {
+    return '';
+  }
+};
+
+const supabaseUrl = getEnv('SUPABASE_URL') || 'https://hxpvgtlmjxmsrmaxfqag.supabase.co';
+const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
+
+// Solo inicializamos si tenemos una clave válida
 export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.length > 20) 
   ? createClient(supabaseUrl, supabaseAnonKey) 
   : null;
 
 if (!supabase) {
-  console.debug("Supabase: Operando en MODO LOCAL.");
+  console.info("Supabase: Iniciando en MODO LOCAL (Sin persistencia en la nube).");
 }
 
 export async function saveChatHistory(userId: string, userMessage: string, aiResponse: string) {

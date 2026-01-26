@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { saveChatHistory } from '../supabase';
-import { MessageSquare, Send, Bot, User, Loader2, Sparkles } from 'lucide-react';
+import { MessageSquare, Send, Bot, User, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 
 const TechnicalAssistant: React.FC = () => {
   const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([]);
@@ -16,8 +16,27 @@ const TechnicalAssistant: React.FC = () => {
     }
   }, [messages]);
 
+  // Función para obtener la API_KEY de forma segura
+  const getSafeApiKey = (): string => {
+    try {
+      // @ts-ignore
+      return window.process?.env?.API_KEY || (typeof process !== 'undefined' ? process.env.API_KEY : '') || '';
+    } catch {
+      return '';
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isTyping) return;
+
+    const apiKey = getSafeApiKey();
+    if (!apiKey) {
+      setMessages(prev => [...prev, { 
+        role: 'ai', 
+        text: 'Error: La API_KEY no está configurada. Por favor, añádela en los ajustes de Vercel como "API_KEY".' 
+      }]);
+      return;
+    }
 
     const userMsg = input.trim();
     setInput('');
@@ -25,8 +44,7 @@ const TechnicalAssistant: React.FC = () => {
     setIsTyping(true);
 
     try {
-      // Inicialización siguiendo las guías oficiales de Google GenAI
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+      const ai = new GoogleGenAI({ apiKey });
       
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -34,29 +52,23 @@ const TechnicalAssistant: React.FC = () => {
         config: {
           systemInstruction: `Eres un experto técnico en competiciones de Altanería (Caza con halcones). 
           Ayudas a los jueces a interpretar el reglamento oficial. 
-          Puntos clave del reglamento:
-          - Altura de servicio: 0.1 pts por cada metro de altura.
-          - Picado: +1 pt por cada 10km/h que exceda los 100km/h.
-          - Remontada: (Altura / TiempoVuelo) * 60.
-          - Penalizaciones: Señuelo encarnado (-4), Enseñar señuelo (-6), Suelta obligada (-10).
-          Tu tono debe ser profesional, conciso y técnico.`,
+          Puntos clave:
+          - Altura: 0.1 pts/metro.
+          - Picado: +1 pt cada 10km/h extra (>100km/h).
+          - Remontada: (Altura / Tiempo) * 60.
+          - Penalizaciones fijas: Señuelo encarnado (-4), Enseñar señuelo (-6), Suelta obligada (-10).
+          Sé conciso y profesional.`,
         },
       });
 
-      const aiText = response.text || 'No he podido procesar la consulta técnica en este momento.';
-      
+      const aiText = response.text || 'Sin respuesta.';
       setMessages(prev => [...prev, { role: 'ai', text: aiText }]);
       
-      // Intentar guardar en historial si Supabase está activo
-      try {
-        await saveChatHistory('juez_oficial', userMsg, aiText);
-      } catch (e) {
-        console.debug('Historial no guardado (modo local activo)');
-      }
+      await saveChatHistory('juez_oficial', userMsg, aiText);
 
     } catch (error) {
       console.error('Error IA:', error);
-      setMessages(prev => [...prev, { role: 'ai', text: 'El servicio de asistencia técnica no está disponible. Verifique la configuración de la API_KEY en el servidor.' }]);
+      setMessages(prev => [...prev, { role: 'ai', text: 'Error de conexión con el asistente. Revisa la consola.' }]);
     } finally {
       setIsTyping(false);
     }
@@ -67,7 +79,7 @@ const TechnicalAssistant: React.FC = () => {
       <div className="p-4 border-b bg-falcon-brown text-white rounded-t-2xl flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5" />
-          <h3 className="font-bold">Asistente Técnico IA</h3>
+          <h3 className="font-bold text-sm">Asistente Técnico IA</h3>
         </div>
         <Sparkles className="w-4 h-4 text-yellow-300 animate-pulse" />
       </div>
@@ -75,18 +87,18 @@ const TechnicalAssistant: React.FC = () => {
       <div ref={scrollRef} className="flex-grow p-4 overflow-y-auto space-y-4 bg-gray-50/50">
         {messages.length === 0 && (
           <div className="text-center py-12 text-gray-400">
-            <MessageSquare className="w-12 h-12 mx-auto mb-2 opacity-20" />
-            <p className="text-sm">Consulta dudas sobre el reglamento o cálculos técnicos aquí.</p>
+            <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-20" />
+            <p className="text-xs font-medium">Consulta dudas sobre el reglamento oficial aquí.</p>
           </div>
         )}
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] p-3 rounded-2xl text-sm ${
+            <div className={`max-w-[85%] p-3 rounded-2xl text-[13px] leading-relaxed shadow-sm ${
               m.role === 'user' 
                 ? 'bg-field-green text-white rounded-tr-none' 
-                : 'bg-white border text-gray-700 shadow-sm rounded-tl-none'
+                : 'bg-white border text-gray-700 rounded-tl-none'
             }`}>
-              <div className="flex items-center gap-2 mb-1 opacity-70 text-[10px] font-bold uppercase">
+              <div className="flex items-center gap-1.5 mb-1 opacity-60 text-[9px] font-black uppercase tracking-wider">
                 {m.role === 'user' ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
                 {m.role === 'user' ? 'Juez' : 'Soporte Técnico'}
               </div>
@@ -110,15 +122,15 @@ const TechnicalAssistant: React.FC = () => {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
-            placeholder="Ej: ¿Cómo se puntúa la captura limpia?"
-            className="flex-grow px-4 py-2 bg-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-field-green transition text-sm"
+            placeholder="Duda técnica..."
+            className="flex-grow px-3 py-2 bg-gray-100 rounded-xl outline-none focus:ring-2 focus:ring-field-green transition text-[13px]"
           />
           <button 
             onClick={handleSend}
             disabled={isTyping}
             className="p-2 bg-field-green text-white rounded-xl hover:bg-green-700 transition disabled:opacity-50"
           >
-            <Send className="w-5 h-5" />
+            <Send className="w-4 h-4" />
           </button>
         </div>
       </div>
