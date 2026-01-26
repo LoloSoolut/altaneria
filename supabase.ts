@@ -1,20 +1,21 @@
-
 import { createClient } from '@supabase/supabase-js';
 
 const getEnv = (key: string): string => {
   try {
-    // @ts-ignore
-    return window.process?.env?.[key] || (typeof process !== 'undefined' ? process.env[key] : '') || '';
+    // Intenta obtener de window.process.env (inyectado por index.html) o del entorno de compilación
+    const value = (window as any).process?.env?.[key] || (typeof process !== 'undefined' ? process.env?.[key] : '');
+    return typeof value === 'string' ? value : '';
   } catch {
     return '';
   }
 };
 
-// URL y Key por defecto o desde entorno
+// URL y Key
 const supabaseUrl = getEnv('SUPABASE_URL') || 'https://hxpvgtlmjxmsrmaxfqag.supabase.co';
 const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
 
-export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.length > 20) 
+// Crear cliente solo si la clave es válida
+export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.length > 10) 
   ? createClient(supabaseUrl, supabaseAnonKey, {
       realtime: {
         params: {
@@ -25,7 +26,9 @@ export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.lengt
   : null;
 
 if (!supabase) {
-  console.warn("Supabase: Modo Local activo. Los cambios no se guardarán en la nube.");
+  console.warn("⚠️ SUPABASE OFFLINE: No se detectó SUPABASE_ANON_KEY. El sistema funcionará en MODO LOCAL.");
+} else {
+  console.log("🚀 SUPABASE ONLINE: Conexión establecida con éxito.");
 }
 
 export async function saveChatHistory(userId: string, userMessage: string, aiResponse: string) {

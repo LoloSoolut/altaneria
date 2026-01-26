@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,19 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COMPETICIONES DE ALTANERÍA PARA PROFESIONALES</title>
     <script>
-        window.process = { 
-          env: {
-            API_KEY: "",
-            SUPABASE_URL: "https://hxpvgtlmjxmsrmaxfqag.supabase.co",
-            SUPABASE_ANON_KEY: ""
-          } 
-        };
+        // Inicialización segura de process.env sin sobreescribir valores inyectados
+        window.process = window.process || {};
+        window.process.env = window.process.env || {};
         
-        window.onerror = function(message) {
-          const ignore = ['MetaMask', 'extension', 'runtime.lastError', 'intrinsics', 'message channel closed', 'i18next'];
-          if (ignore.some(term => message && message.toLowerCase().includes(term.toLowerCase()))) return false;
-          console.error("Error Detectado:", message);
-        };
+        // Solo asignar si están vacíos para permitir inyección externa
+        window.process.env.SUPABASE_URL = window.process.env.SUPABASE_URL || "https://hxpvgtlmjxmsrmaxfqag.supabase.co";
+        // La ANON_KEY debe venir de las variables de entorno del despliegue
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
