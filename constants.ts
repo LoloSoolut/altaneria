@@ -10,7 +10,6 @@ export const SCORING = {
     if (meters <= 30) return 15;
     if (meters > 160) return 0;
     // Approximation based on table: decreases by roughly 0.1-0.3 pts per meter
-    // We'll use a more precise piece-wise approximation from the document
     if (meters <= 40) return 15 - (meters - 30) * 0.3; // 30-40 range
     return Math.max(0, 12 - (meters - 40) * 0.1); // 40-160 range
   },
@@ -46,10 +45,11 @@ export const SCORING = {
   },
 
   calculateTimeBonus: (seconds: number) => {
-    if (seconds < 299) return 6; // < 4:59
-    if (seconds < 359) return 4; // < 5:59
-    if (seconds < 419) return 2; // < 6:59
-    return 0;
+    if (seconds <= 0) return 0;
+    if (seconds <= 299) return 6; // Inferior a 4:59 (299s)
+    if (seconds <= 359) return 4; // Entre 5:00 y 5:59 (300-359s)
+    if (seconds <= 419) return 2; // Entre 6:00 y 6:59 (360-419s)
+    return 0; // 7:00 o superior
   }
 };
 
