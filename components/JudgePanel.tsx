@@ -2,9 +2,10 @@
 import React, { useState } from 'react';
 import { AppState, Championship, FlightData } from '../types.ts';
 import { supabase } from '../supabase.ts';
-import { Plus, Trash2, Edit3, Gavel, Clock, Save, CloudOff, Cloud, RefreshCw, AlertTriangle, Database } from 'lucide-react';
+import { Plus, Trash2, Edit3, Gavel, Clock, Save, CloudOff, Cloud, RefreshCw, AlertTriangle, Database, FileDown, ScrollText } from 'lucide-react';
 import FlightScoringForm from './FlightScoringForm.tsx';
 import TechnicalAssistant from './TechnicalAssistant.tsx';
+import { SCORING } from '../constants.ts';
 
 interface Props {
   state: AppState;
@@ -21,16 +22,90 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
 
   const selectedChamp = state.championships.find(c => c.id === state.selectedChampionshipId);
 
-  // Sincronización garantizada con Supabase
-  const syncWithSupabase = async (championship: Championship) => {
-    if (!supabase) {
-      console.warn("Supabase no configurado. Cambios guardados solo localmente.");
-      return;
-    }
+  const exportToPDF = () => {
+    if (!selectedChamp) return;
     
+    // @ts-ignore
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4');
+    
+    // Estilos de PDF
+    const primaryColor = [27, 94, 32]; // Field Green
+    const secondaryColor = [93, 64, 55]; // Falcon Brown
+    
+    // Encabezado
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, 297, 30, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('COMPETICIONES DE ALTANERÍA PARA PROFESIONALES', 15, 20);
+    
+    // Metadatos del Campeonato
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(14);
+    doc.text(`Campeonato: ${selectedChamp.name}`, 15, 45);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Ubicación: ${selectedChamp.location} | Fecha: ${selectedChamp.date}`, 15, 52);
+    doc.text(`Fecha de Reporte: ${new Date().toLocaleString()}`, 15, 57);
+
+    // Tabla de Clasificación
+    const sortedParticipants = [...selectedChamp.participants].sort((a, b) => b.totalPoints - a.totalPoints);
+    const tableData = sortedParticipants.map((p, i) => {
+      const turnBonus = SCORING.calculateTimeBonus(p.tiempoVuelo);
+      const penTotal = (p.penSenueloEncarnado ? 4 : 0) + 
+                       (p.penEnsenarSenuelo ? 6 : 0) + 
+                       (p.penSueltaObligada ? 10 : 0) + 
+                       (p.penPicado || 0);
+
+      return [
+        i + 1,
+        p.falconerName,
+        p.falconName,
+        `${p.alturaServicio}m`,
+        `${Math.floor(p.tiempoVuelo / 60)}m ${p.tiempoVuelo % 60}s`,
+        `${p.tiempoCortesia}s`,
+        `${p.velocidadPicado}km/h`,
+        `${p.distanciaServicio}m`,
+        p['bon recogida'],
+        turnBonus,
+        penTotal > 0 ? `-${penTotal}` : '0',
+        { content: p.totalPoints.toFixed(2), styles: { fontStyle: 'bold', textColor: primaryColor } }
+      ];
+    });
+
+    // @ts-ignore
+    doc.autoTable({
+      startY: 65,
+      head: [['Pos', 'Cetrero', 'Halcón', 'Alt.', 'Tiempo', 'Cort.', 'Picado', 'Dist.', 'B.Rec', 'B.Tie', 'Pen', 'TOTAL']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontSize: 9 },
+      styles: { fontSize: 8, cellPadding: 3 },
+      columnStyles: {
+        0: { cellWidth: 10 },
+        11: { cellWidth: 20, halign: 'center' }
+      }
+    });
+
+    // Footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text('Documento Oficial de Arbitraje - Sistema Altanería Pro v1.2', 15, 200);
+      doc.text(`Página ${i} de ${pageCount}`, 270, 200);
+    }
+
+    doc.save(`${selectedChamp.name.replace(/\s+/g, '_')}_Clasificacion.pdf`);
+  };
+
+  const syncWithSupabase = async (championship: Championship) => {
+    if (!supabase) return;
     setSyncing(true);
     setLastError(null);
-    
     try {
       const { error } = await supabase
         .from('championships')
@@ -44,14 +119,8 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
           createdAt: championship.createdAt
         }, { onConflict: 'id' });
 
-      if (error) {
-        console.error("Error al guardar en Supabase:", error.message);
-        setLastError(error.message);
-      } else {
-        console.log("Sincronización completa con la nube.");
-      }
+      if (error) setLastError(error.message);
     } catch (e) {
-      console.error("Fallo de red al intentar sincronizar:", e);
       setLastError("Error de red");
     } finally {
       setSyncing(false);
@@ -69,85 +138,55 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
       isPublic: false,
       createdAt: Date.now()
     };
-
     const updatedChamps = [champ, ...state.championships];
-    onUpdateState({ 
-      championships: updatedChamps,
-      selectedChampionshipId: champ.id 
-    });
+    onUpdateState({ championships: updatedChamps, selectedChampionshipId: champ.id });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
-    
     await syncWithSupabase(champ);
     setIsCreating(false);
     setNewChamp({ name: '', date: '', location: '' });
   };
 
   const deleteChamp = async (id: string) => {
-    if (!confirm('¿Seguro que desea eliminar este campeonato permanentemente?')) return;
-    
+    if (!confirm('¿Seguro que desea eliminar este campeonato?')) return;
     const updatedChamps = state.championships.filter(c => c.id !== id);
     onUpdateState({ championships: updatedChamps });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
-
-    if (supabase) {
-      await supabase.from('championships').delete().eq('id', id);
-    }
-    
+    if (supabase) await supabase.from('championships').delete().eq('id', id);
     if (state.selectedChampionshipId === id) onUpdateState({ selectedChampionshipId: null });
   };
 
   const saveParticipant = async (data: FlightData, isUpdate: boolean) => {
     if (!selectedChamp) return;
-    
     const updatedParticipants = isUpdate 
       ? selectedChamp.participants.map(p => p.id === data.id ? data : p)
       : [...selectedChamp.participants, data];
-
     const updatedChamp = { ...selectedChamp, participants: updatedParticipants };
-    const updatedChamps = state.championships.map(c => 
-      c.id === selectedChamp.id ? updatedChamp : c
-    );
-
+    const updatedChamps = state.championships.map(c => c.id === selectedChamp.id ? updatedChamp : c);
     onUpdateState({ championships: updatedChamps });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
-
     await syncWithSupabase(updatedChamp);
     setIsAddingParticipant(false);
     setEditingFlightId(null);
   };
 
-  // Fix: Implemented deleteParticipant to handle deletion of flight records
   const deleteParticipant = async (participantId: string) => {
-    if (!selectedChamp || !confirm('¿Seguro que desea eliminar este registro de vuelo?')) return;
-
+    if (!selectedChamp || !confirm('¿Eliminar registro?')) return;
     const updatedParticipants = selectedChamp.participants.filter(p => p.id !== participantId);
     const updatedChamp = { ...selectedChamp, participants: updatedParticipants };
-    const updatedChamps = state.championships.map(c => 
-      c.id === selectedChamp.id ? updatedChamp : c
-    );
-
+    const updatedChamps = state.championships.map(c => c.id === selectedChamp.id ? updatedChamp : c);
     onUpdateState({ championships: updatedChamps });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
-
     await syncWithSupabase(updatedChamp);
   };
 
   const togglePublic = async (id: string) => {
-    const updatedChamps = state.championships.map(c => ({ 
-      ...c, 
-      isPublic: c.id === id 
-    }));
-    
+    const updatedChamps = state.championships.map(c => ({ ...c, isPublic: c.id === id }));
     const target = updatedChamps.find(c => c.id === id);
     onUpdateState({ championships: updatedChamps, publicChampionshipId: id });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
-
     if (target) {
       await syncWithSupabase(target);
-      if (supabase) {
-        // Asegurar que solo uno sea público en la DB
-        await supabase.from('championships').update({ isPublic: false }).neq('id', id);
-      }
+      if (supabase) await supabase.from('championships').update({ isPublic: false }).neq('id', id);
     }
   };
 
@@ -161,23 +200,19 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
 
   return (
     <div className="space-y-6">
-      {/* Indicador de Conexión Supabase */}
       <div className={`px-5 py-3 rounded-2xl flex items-center justify-between transition-all ${!supabase ? 'bg-orange-50 border border-orange-100 text-orange-600' : lastError ? 'bg-red-50 border border-red-100 text-red-600' : 'bg-green-50 border border-green-100 text-field-green'}`}>
         <div className="flex items-center gap-3">
           {syncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : supabase ? <Cloud className="w-4 h-4" /> : <CloudOff className="w-4 h-4" />}
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest leading-none">Estado de la Base de Datos</p>
-            <p className="text-xs font-bold mt-1">
-              {!supabase ? "Clave API no encontrada en index.html" : lastError ? `Error: ${lastError}` : "Conectado al proyecto hxpvgtlmjxmsrmaxfqag"}
-            </p>
+            <p className="text-xs font-bold mt-1">{!supabase ? "Modo Local" : lastError ? `Error: ${lastError}` : "Sincronizado"}</p>
           </div>
         </div>
-        {supabase && !lastError && !syncing && <Database className="w-4 h-4 opacity-30" />}
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-2xl shadow-md flex justify-between items-center border border-gray-100">
+          <div className="bg-white p-6 rounded-2xl shadow-md flex flex-col sm:flex-row justify-between items-center border border-gray-100 gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-field-green/10 rounded-xl flex items-center justify-center">
                 <Gavel className="w-6 h-6 text-field-green" />
@@ -187,14 +222,20 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Gestión Técnica Profesional</p>
               </div>
             </div>
-            <button onClick={() => setIsCreating(true)} className="bg-field-green text-white px-6 py-3 rounded-xl flex items-center gap-2 font-black uppercase text-xs tracking-widest hover:bg-green-800 transition-all shadow-lg active:scale-95">
-              <Plus className="w-4 h-4" /> Nuevo Torneo
-            </button>
+            <div className="flex gap-2">
+              {selectedChamp && (
+                <button onClick={exportToPDF} className="bg-yellow-600 text-white px-5 py-3 rounded-xl flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:bg-yellow-700 transition-all shadow-lg active:scale-95">
+                  <FileDown className="w-4 h-4" /> PDF Clasificación
+                </button>
+              )}
+              <button onClick={() => setIsCreating(true)} className="bg-field-green text-white px-6 py-3 rounded-xl flex items-center gap-2 font-black uppercase text-[10px] tracking-widest hover:bg-green-800 transition-all shadow-lg active:scale-95">
+                <Plus className="w-4 h-4" /> Nuevo Torneo
+              </button>
+            </div>
           </div>
 
           {isCreating && (
             <form onSubmit={handleCreateChamp} className="bg-white p-8 rounded-3xl shadow-2xl space-y-4 border-2 border-field-green/20 animate-in zoom-in-95 duration-300">
-              <h4 className="font-black text-xs uppercase tracking-widest text-field-green mb-4">Nueva Competición</h4>
               <input required placeholder="Nombre del Campeonato" value={newChamp.name} onChange={e => setNewChamp({...newChamp, name: e.target.value})} className="w-full px-4 py-3 border rounded-xl outline-none focus:ring-2 focus:ring-field-green" />
               <div className="flex gap-4">
                 <input required type="date" value={newChamp.date} onChange={e => setNewChamp({...newChamp, date: e.target.value})} className="flex-1 px-4 py-3 border rounded-xl outline-none" />
@@ -269,7 +310,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
             </div>
           ) : (
             <div className="bg-white rounded-[40px] p-24 text-center border-2 border-dashed border-gray-200 shadow-inner flex flex-col items-center">
-               <Gavel className="w-16 h-16 text-gray-100 mb-6" />
+               <ScrollText className="w-16 h-16 text-gray-100 mb-6" />
                <h3 className="text-xl font-black text-gray-300 uppercase tracking-widest">Seleccione un Torneo</h3>
             </div>
           )}
@@ -283,36 +324,12 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
             </h3>
             <div className="space-y-3">
               {state.championships.map(champ => (
-                <div 
-                  key={champ.id} 
-                  className={`group p-4 rounded-2xl cursor-pointer border-2 transition-all ${
-                    state.selectedChampionshipId === champ.id 
-                      ? 'bg-falcon-brown border-falcon-brown text-white shadow-xl' 
-                      : 'border-transparent bg-gray-50 hover:bg-white hover:border-falcon-brown/20'
-                  }`} 
-                  onClick={() => onUpdateState({ selectedChampionshipId: champ.id })}
-                >
+                <div key={champ.id} className={`group p-4 rounded-2xl cursor-pointer border-2 transition-all ${state.selectedChampionshipId === champ.id ? 'bg-falcon-brown border-falcon-brown text-white shadow-xl' : 'border-transparent bg-gray-50 hover:bg-white hover:border-falcon-brown/20'}`} onClick={() => onUpdateState({ selectedChampionshipId: champ.id })}>
                   <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1 min-w-0">
-                      <span className="font-black text-xs uppercase block truncate">
-                        {champ.name}
-                      </span>
-                    </div>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); deleteChamp(champ.id); }}
-                      className={`p-1.5 rounded-lg transition-colors ${state.selectedChampionshipId === champ.id ? 'hover:bg-white/10 text-white' : 'text-red-300 hover:text-red-500 hover:bg-red-50'}`}
-                    >
-                      <Trash2 className="w-3.5 h-3.5"/>
-                    </button>
+                    <div className="flex-1 min-w-0"><span className="font-black text-xs uppercase block truncate">{champ.name}</span></div>
+                    <button onClick={(e) => { e.stopPropagation(); deleteChamp(champ.id); }} className={`p-1.5 rounded-lg transition-colors ${state.selectedChampionshipId === champ.id ? 'hover:bg-white/10 text-white' : 'text-red-300 hover:text-red-500 hover:bg-red-50'}`}><Trash2 className="w-3.5 h-3.5"/></button>
                   </div>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); togglePublic(champ.id); }} 
-                    className={`w-full text-[9px] py-2.5 rounded-xl border-2 uppercase font-black tracking-widest transition-all ${
-                      champ.isPublic 
-                        ? (state.selectedChampionshipId === champ.id ? 'bg-white text-field-green border-white' : 'bg-field-green text-white border-field-green shadow-md') 
-                        : (state.selectedChampionshipId === champ.id ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-200 text-gray-400 hover:border-field-green hover:text-field-green')
-                    }`}
-                  >
+                  <button onClick={(e) => { e.stopPropagation(); togglePublic(champ.id); }} className={`w-full text-[9px] py-2.5 rounded-xl border-2 uppercase font-black tracking-widest transition-all ${champ.isPublic ? (state.selectedChampionshipId === champ.id ? 'bg-white text-field-green border-white' : 'bg-field-green text-white border-field-green shadow-md') : (state.selectedChampionshipId === champ.id ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-200 text-gray-400 hover:border-field-green hover:text-field-green')}`}>
                     {champ.isPublic ? "Resultados Públicos" : "Publicar Resultados"}
                   </button>
                 </div>

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AppState, FlightData, Championship } from '../types.ts';
-import { Trophy, Search, X, Clock, Navigation, Zap, ArrowUpCircle, Timer, ShieldAlert, BadgeCheck, Minus, Plus } from 'lucide-react';
+import { Trophy, Search, X, Clock, Navigation, Zap, ArrowUpCircle, Timer, ShieldAlert, BadgeCheck, Minus, Plus, Star } from 'lucide-react';
 import { SCORING, CAPTURA_LABELS } from '../constants.ts';
 import { supabase } from '../supabase.ts';
 
@@ -173,14 +173,21 @@ const PublicView: React.FC<Props> = ({ state }) => {
                       <Plus className="w-3 h-3"/> {SCORING.calculateRemontadaPoints(SCORING.calculateRemontadaValue(selectedFlight.alturaServicio, selectedFlight.tiempoVuelo)).toFixed(2)}
                     </span>
                   </div>
-                  {selectedFlight['bon recogida'] > 0 && (
-                    <div className="flex justify-between items-center pt-2 border-t border-green-100">
-                      <span className="text-gray-600 font-bold uppercase text-[10px]">Bonificación Recogida</span>
-                      <span className="font-black text-field-green flex items-center gap-1">
-                        <Plus className="w-3 h-3"/> {selectedFlight['bon recogida'].toFixed(2)}
-                      </span>
+                  
+                  {/* Visualización Mejorada de Bonos */}
+                  <div className="grid grid-cols-2 gap-2 mt-4">
+                    <div className="bg-white p-3 rounded-xl border border-green-100 shadow-sm flex flex-col items-center">
+                      <Star className="w-4 h-4 text-yellow-500 mb-1" />
+                      <span className="text-[9px] font-black text-gray-400 uppercase">Recogida</span>
+                      <span className="text-lg font-black text-field-green">+{selectedFlight['bon recogida'].toFixed(2)}</span>
                     </div>
-                  )}
+                    <div className="bg-white p-3 rounded-xl border border-green-100 shadow-sm flex flex-col items-center">
+                      <Clock className="w-4 h-4 text-field-green mb-1" />
+                      <span className="text-[9px] font-black text-gray-400 uppercase">Bono Tiempo</span>
+                      <span className="text-lg font-black text-field-green">+{SCORING.calculateTimeBonus(selectedFlight.tiempoVuelo).toFixed(2)}</span>
+                    </div>
+                  </div>
+
                   {selectedFlight.capturaType && (
                     <div className="flex justify-between items-center pt-2 mt-2 bg-white px-3 py-2 rounded-xl border border-green-100">
                       <span className="text-field-green font-black italic">{CAPTURA_LABELS[selectedFlight.capturaType]}</span>

@@ -1,9 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Championship, AppState } from './types.ts';
 import JudgePanel from './components/JudgePanel.tsx';
 import PublicView from './components/PublicView.tsx';
 import { supabase } from './supabase.ts';
 import { Trophy, Gavel, Users, ShieldCheck, Loader2, AlertCircle, Bird } from 'lucide-react';
+
+const APP_VERSION = "1.2.0"; // Incrementamos versión para forzar limpieza
 
 const App: React.FC = () => {
   const [view, setView] = useState<'home' | 'judge' | 'public'>('home');
@@ -17,6 +20,14 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
+    // Lógica de limpieza de caché/localStorage por versión
+    const savedVersion = localStorage.getItem('altaneria_app_version');
+    if (savedVersion !== APP_VERSION) {
+      console.log(`Nueva versión detectada (${APP_VERSION}). Limpiando caché local...`);
+      localStorage.removeItem('altaneria_championships');
+      localStorage.setItem('altaneria_app_version', APP_VERSION);
+    }
+
     const fetchData = async () => {
       setLoading(true);
       
@@ -137,11 +148,11 @@ const App: React.FC = () => {
       <main className="flex-grow container mx-auto px-4 py-12">
         {view === 'home' && (
           <div className="max-w-4xl mx-auto space-y-16">
-            <div className="relative group overflow-hidden rounded-[32px] shadow-professional">
-              <img src="https://images.unsplash.com/photo-1611689225620-3e70248bc0f0?q=80&w=2000" alt="Altanería" className="w-full h-[450px] object-cover transition-transform duration-700 group-hover:scale-105" />
-              <div className="absolute inset-0 bg-gradient-to-t from-field-green/90 via-field-green/40 to-transparent flex flex-col justify-end p-12">
-                <h2 className="text-white text-4xl md:text-5xl font-bold mb-4">La Excelencia en el Vuelo</h2>
-                <p className="text-white/90 text-lg font-light max-w-xl italic">"Donde la precisión del juez se encuentra con la majestuosidad del halcón en el cielo profesional."</p>
+            <div className="relative group overflow-hidden rounded-[32px] shadow-professional bg-black">
+              <img src="https://images.unsplash.com/photo-1549113645-9856a9089069?q=80&w=2000" alt="Halcón en Picado" className="w-full h-[450px] object-cover transition-transform duration-1000 group-hover:scale-110 opacity-70" />
+              <div className="absolute inset-0 bg-gradient-to-t from-field-green/90 via-field-green/30 to-transparent flex flex-col justify-end p-12">
+                <h2 className="text-white text-4xl md:text-6xl font-black mb-4 tracking-tighter uppercase drop-shadow-2xl">La Excelencia en el Vuelo</h2>
+                <p className="text-white/90 text-lg font-light max-w-xl italic border-l-4 border-falcon-brown pl-6 bg-black/20 p-4 rounded-r-xl backdrop-blur-sm">"Donde la precisión del juez se encuentra con la majestuosidad del halcón en el cielo profesional."</p>
               </div>
             </div>
 
