@@ -1,34 +1,41 @@
-
 import { createClient } from '@supabase/supabase-js';
 
-// Detector universal de variables de entorno
 const getEnv = (key: string): string => {
-  if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key] as string;
-  if ((window as any).process?.env?.[key]) return (window as any).process.env[key];
-  if ((import.meta as any).env?.[`VITE_${key}`]) return (import.meta as any).env[`VITE_${key}`];
+  const value = (window as any).process?.env?.[key];
+  if (value) return value.trim();
   return '';
 };
 
-// URL del proyecto hxpvgtlmjxmsrmaxfqag
-const supabaseUrl = getEnv('SUPABASE_URL') || 'https://hxpvgtlmjxmsrmaxfqag.supabase.co';
-// Probamos con varios nombres comunes de la clave anon
-const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY') || getEnv('SUPABASE_KEY') || getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY');
+const supabaseUrl = getEnv('SUPABASE_URL');
+const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
 
-export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.length > 10) 
-  ? createClient(supabaseUrl, supabaseAnonKey, {
-      auth: { persistSession: true },
-      db: { schema: 'public' }
-    }) 
-  : null;
+// Verificación más flexible: Las claves modernas pueden empezar por sb_publishable_ o ser JWTs (eyJ...)
+const isValidKey = (key: string) => {
+  return key && (key.length > 20 || key.startsWith('sb_'));
+};
 
-if (!supabase) {
-  console.warn("⚠️ SISTEMA EN MODO LOCAL: No se detectó SUPABASE_ANON_KEY. Los datos no se sincronizarán con la nube.");
-} else {
-  console.log("✅ CONECTADO A SUPABASE: " + supabaseUrl);
-}
+const initSupabase = () => {
+  if (!supabaseUrl || !isValidKey(supabaseAnonKey)) {
+    console.error("❌ ERROR DE CONFIGURACIÓN: No se detectaron credenciales válidas en index.html.");
+    console.info("💡 URL detectada:", supabaseUrl || "VACÍA");
+    console.info("💡 Key detectada (primeros 5 caracteres):", supabaseAnonKey ? supabaseAnonKey.substring(0, 5) + "..." : "VACÍA");
+    return null;
+  }
+
+  try {
+    const client = createClient(supabaseUrl, supabaseAnonKey);
+    console.log("✅ SISTEMA CONECTADO: Sincronización activa con Supabase.");
+    return client;
+  } catch (err) {
+    console.error("❌ ERROR AL CREAR CLIENTE SUPABASE:", err);
+    return null;
+  }
+};
+
+export const supabase = initSupabase();
 
 export async function saveChatHistory(userId: string, userMessage: string, aiResponse: string) {
-  if (!supabase) return { data: null, error: null };
+  if (!supabase) return { data: null, error: "Supabase no conectado" };
   try {
     const { data, error } = await supabase
       .from('historial_chats')

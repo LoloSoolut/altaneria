@@ -5,13 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>COMPETICIONES DE ALTANERÍA PARA PROFESIONALES</title>
     <script>
-        // Inicialización segura de process.env sin sobreescribir valores inyectados
+        // --- CONFIGURACIÓN DE CONEXIÓN ---
         window.process = window.process || {};
         window.process.env = window.process.env || {};
         
-        // Solo asignar si están vacíos para permitir inyección externa
-        window.process.env.SUPABASE_URL = window.process.env.SUPABASE_URL || "https://hxpvgtlmjxmsrmaxfqag.supabase.co";
-        // La ANON_KEY debe venir de las variables de entorno del despliegue
+        // 1. URL de tu proyecto
+        window.process.env.SUPABASE_URL = "https://hxpvgtlmjxmsrmaxfqag.supabase.co";
+        
+        // 2. Publishable Key (Anon Key)
+        // Asegúrate de copiar el código completo que empieza por "eyJ..." o "sb_..."
+        window.process.env.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cHZndGxtanhtc3JtYXhmcWFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0Mzk1NjgsImV4cCI6MjA4NTAxNTU2OH0.ngteXMW50b2hKo3Cwke2NvwJqkrLJDPvsDVTft1AMoI"; 
+        // ---------------------------------
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>

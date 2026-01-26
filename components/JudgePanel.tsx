@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { AppState, Championship, FlightData } from '../types.ts';
 import { supabase } from '../supabase.ts';
-import { Plus, Trash2, Edit3, Gavel, Clock, Save, CloudOff, Cloud, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Edit3, Gavel, Clock, Save, CloudOff, Cloud, RefreshCw, AlertTriangle, Database } from 'lucide-react';
 import FlightScoringForm from './FlightScoringForm.tsx';
 import TechnicalAssistant from './TechnicalAssistant.tsx';
 
@@ -21,11 +21,16 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
 
   const selectedChamp = state.championships.find(c => c.id === state.selectedChampionshipId);
 
-  // Función crítica para persistir cambios en Supabase
+  // Sincronización garantizada con Supabase
   const syncWithSupabase = async (championship: Championship) => {
-    if (!supabase) return;
+    if (!supabase) {
+      console.warn("Supabase no configurado. Cambios guardados solo localmente.");
+      return;
+    }
+    
     setSyncing(true);
     setLastError(null);
+    
     try {
       const { error } = await supabase
         .from('championships')
@@ -40,12 +45,14 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
         }, { onConflict: 'id' });
 
       if (error) {
-        console.error("Error Supabase:", error);
+        console.error("Error al guardar en Supabase:", error.message);
         setLastError(error.message);
+      } else {
+        console.log("Sincronización completa con la nube.");
       }
     } catch (e) {
-      console.error("Fallo de red:", e);
-      setLastError("Error de conexión");
+      console.error("Fallo de red al intentar sincronizar:", e);
+      setLastError("Error de red");
     } finally {
       setSyncing(false);
     }
@@ -76,7 +83,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
   };
 
   const deleteChamp = async (id: string) => {
-    if (!confirm('¿Seguro que desea eliminar este campeonato de la base de datos?')) return;
+    if (!confirm('¿Seguro que desea eliminar este campeonato permanentemente?')) return;
     
     const updatedChamps = state.championships.filter(c => c.id !== id);
     onUpdateState({ championships: updatedChamps });
@@ -109,6 +116,22 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
     setEditingFlightId(null);
   };
 
+  // Fix: Implemented deleteParticipant to handle deletion of flight records
+  const deleteParticipant = async (participantId: string) => {
+    if (!selectedChamp || !confirm('¿Seguro que desea eliminar este registro de vuelo?')) return;
+
+    const updatedParticipants = selectedChamp.participants.filter(p => p.id !== participantId);
+    const updatedChamp = { ...selectedChamp, participants: updatedParticipants };
+    const updatedChamps = state.championships.map(c => 
+      c.id === selectedChamp.id ? updatedChamp : c
+    );
+
+    onUpdateState({ championships: updatedChamps });
+    localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
+
+    await syncWithSupabase(updatedChamp);
+  };
+
   const togglePublic = async (id: string) => {
     const updatedChamps = state.championships.map(c => ({ 
       ...c, 
@@ -121,8 +144,8 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
 
     if (target) {
       await syncWithSupabase(target);
-      // Desactivar otros que fueran públicos en Supabase
       if (supabase) {
+        // Asegurar que solo uno sea público en la DB
         await supabase.from('championships').update({ isPublic: false }).neq('id', id);
       }
     }
@@ -138,16 +161,19 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
 
   return (
     <div className="space-y-6">
-      {/* Barra de Estado de Sincronización */}
-      {supabase && (
-        <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center justify-between transition-colors ${lastError ? 'bg-red-100 text-red-600' : 'bg-green-50 text-field-green'}`}>
-          <div className="flex items-center gap-2">
-            {syncing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Cloud className="w-3 h-3" />}
-            {syncing ? "Sincronizando con Supabase..." : lastError ? `Error: ${lastError}` : "Nube Sincronizada (hxpvgtlmjxmsrmaxfqag)"}
+      {/* Indicador de Conexión Supabase */}
+      <div className={`px-5 py-3 rounded-2xl flex items-center justify-between transition-all ${!supabase ? 'bg-orange-50 border border-orange-100 text-orange-600' : lastError ? 'bg-red-50 border border-red-100 text-red-600' : 'bg-green-50 border border-green-100 text-field-green'}`}>
+        <div className="flex items-center gap-3">
+          {syncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : supabase ? <Cloud className="w-4 h-4" /> : <CloudOff className="w-4 h-4" />}
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest leading-none">Estado de la Base de Datos</p>
+            <p className="text-xs font-bold mt-1">
+              {!supabase ? "Clave API no encontrada en index.html" : lastError ? `Error: ${lastError}` : "Conectado al proyecto hxpvgtlmjxmsrmaxfqag"}
+            </p>
           </div>
-          {lastError && <AlertTriangle className="w-3 h-3" />}
         </div>
-      )}
+        {supabase && !lastError && !syncing && <Database className="w-4 h-4 opacity-30" />}
+      </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-6">
@@ -230,7 +256,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                             <button onClick={() => setEditingFlightId(p.id)} className="p-2.5 text-falcon-brown hover:bg-falcon-brown hover:text-white rounded-lg transition-all">
                               <Edit3 className="w-4 h-4" />
                             </button>
-                            <button onClick={() => deleteChamp(p.id)} className="p-2.5 text-red-200 hover:bg-red-500 hover:text-white rounded-lg transition-all">
+                            <button onClick={() => deleteParticipant(p.id)} className="p-2.5 text-red-200 hover:bg-red-500 hover:text-white rounded-lg transition-all">
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
