@@ -1,5 +1,5 @@
 
-import { CapturaType } from './types';
+import { CapturaType } from './types.ts';
 
 export const SCORING = {
   // 0.1 points per meter

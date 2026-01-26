@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { saveChatHistory } from '../supabase';
+import { saveChatHistory } from '../supabase.ts';
 import { MessageSquare, Send, Bot, User, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 
 const TechnicalAssistant: React.FC = () => {
