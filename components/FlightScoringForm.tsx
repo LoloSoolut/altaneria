@@ -62,7 +62,7 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
   }, [calculatedTotal, isDisqualified]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 max-h-[80vh] overflow-y-auto px-2 pb-20 md:pb-8 custom-scrollbar">
+    <div className="space-y-8 animate-in fade-in duration-500 px-1 pb-32 no-scrollbar">
       {/* 1. Datos del Competidor */}
       <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1">

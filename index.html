@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -13,7 +14,6 @@
         window.process.env.SUPABASE_URL = "https://hxpvgtlmjxmsrmaxfqag.supabase.co";
         
         // 2. Publishable Key (Anon Key)
-        // Asegúrate de copiar el código completo que empieza por "eyJ..." o "sb_..."
         window.process.env.SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4cHZndGxtanhtc3JtYXhmcWFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk0Mzk1NjgsImV4cCI6MjA4NTAxNTU2OH0.ngteXMW50b2hKo3Cwke2NvwJqkrLJDPvsDVTft1AMoI"; 
         // ---------------------------------
     </script>
@@ -32,6 +32,10 @@
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .animate-in { animation: fadeIn 0.6s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Utilidad para ocultar barras de scroll */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
     <script type="importmap">
 {
