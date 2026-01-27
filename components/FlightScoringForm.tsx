@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { FlightData, CapturaType } from '../types.ts';
 import { SCORING, CAPTURA_LABELS } from '../constants.ts';
@@ -109,7 +108,7 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
             <input type="number" value={formData.tiempoCortesia || ''} onChange={e => setFormData({...formData, tiempoCortesia: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-xl font-bold text-base md:text-lg focus:ring-2 focus:ring-field-green outline-none" />
           </div>
           <div className="space-y-1 col-span-2 md:col-span-1">
-            <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><MapPin className="w-3 h-3"/> Distancia Servicio</label>
+            <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><MapPin className="w-3 h-3"/> Distancia</label>
             <input type="number" value={formData.distanciaServicio || ''} onChange={e => setFormData({...formData, distanciaServicio: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-xl font-bold text-base md:text-lg focus:ring-2 focus:ring-field-green outline-none" />
             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">+{servicioPts.toFixed(2)} pts Pos.</p>
           </div>
