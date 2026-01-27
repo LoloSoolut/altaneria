@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Championship, AppState } from './types.ts';
 import JudgePanel from './components/JudgePanel.tsx';
 import PublicView from './components/PublicView.tsx';
 import { supabase } from './supabase.ts';
-import { Trophy, Gavel, Users, ShieldCheck, Loader2, AlertCircle, Bird } from 'lucide-react';
+import { Trophy, Gavel, Users, ShieldCheck, Loader2, AlertCircle, Bird, Radio } from 'lucide-react';
 // Fix: Import APP_VERSION from centralized constants to avoid scope errors
 import { APP_VERSION } from './constants.ts';
 
@@ -39,6 +38,10 @@ const App: React.FC = () => {
           selectedChampionshipId: championships[0]?.id || null,
           publicChampionshipId: publicChamp?.id || null
         });
+        
+        // Si hay un campeonato público activo, mostramos la vista pública por defecto
+        if (publicChamp) setView('public');
+        
         setLoading(false);
         return;
       }
@@ -56,6 +59,11 @@ const App: React.FC = () => {
             selectedChampionshipId: championships[0]?.id || null,
             publicChampionshipId: publicChamp?.id || null
           });
+          
+          // Si hay un campeonato público activo al iniciar, vamos directos a él
+          if (publicChamp) {
+            setView('public');
+          }
         }
       } catch (e) {
         console.error("Error fetching from Supabase:", e);
@@ -133,8 +141,14 @@ const App: React.FC = () => {
           </div>
           <nav className="flex bg-black/10 p-1.5 rounded-2xl backdrop-blur-md">
             <button onClick={() => setView('home')} className={`px-6 py-2.5 rounded-xl font-bold transition-all duration-300 ${view === 'home' ? 'bg-white text-field-green shadow-lg' : 'hover:bg-white/10'}`}>Inicio</button>
-            <button onClick={() => setView('public')} className={`px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 ${view === 'public' ? 'bg-white text-field-green shadow-lg' : 'hover:bg-white/10'}`}>
+            <button onClick={() => setView('public')} className={`px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 relative ${view === 'public' ? 'bg-white text-field-green shadow-lg' : 'hover:bg-white/10'}`}>
               <Users className="w-4 h-4" /> Público
+              {state.publicChampionshipId && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-white"></span>
+                </span>
+              )}
             </button>
             <button onClick={() => setView('judge')} className={`px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all duration-300 ${view === 'judge' ? 'bg-white text-field-green shadow-lg' : 'hover:bg-white/10'}`}>
               <Gavel className="w-4 h-4" /> Jurado
@@ -156,9 +170,17 @@ const App: React.FC = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-12">
                   <div className="flex flex-col gap-2 mb-6">
-                    <span className="text-field-green bg-white/95 backdrop-blur-sm self-start px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">
-                      Élite de la Cetrería
-                    </span>
+                    {state.publicChampionshipId ? (
+                      <div className="flex items-center gap-3 self-start">
+                        <span className="text-white bg-red-600 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.25em] shadow-xl flex items-center gap-2">
+                          <Radio className="w-3 h-3 animate-pulse" /> Competición en Directo
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-field-green bg-white/95 backdrop-blur-sm self-start px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">
+                        Élite de la Cetrería
+                      </span>
+                    )}
                   </div>
                   <h2 className="text-white text-4xl md:text-7xl font-black mb-4 tracking-tighter uppercase drop-shadow-2xl max-w-2xl">
                     Competiciones de Altanería
@@ -166,12 +188,26 @@ const App: React.FC = () => {
                   <p className="text-white/90 text-xl font-light max-w-2xl italic border-l-4 border-field-green pl-6 bg-black/40 p-6 rounded-r-3xl backdrop-blur-xl">
                     "Rigurosidad técnica y pasión por el vuelo. El estándar profesional para el registro de actas de vuelo y clasificación en tiempo real."
                   </p>
+                  
+                  {state.publicChampionshipId && (
+                    <button onClick={() => setView('public')} className="mt-8 bg-field-green text-white px-8 py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center gap-3 self-start hover:bg-green-700 transition-all shadow-2xl shadow-green-900/40 active:scale-95 group">
+                      Acceder a Resultados en Vivo <Users className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="grid md:grid-cols-2 gap-10">
-              <div className="bg-white p-12 rounded-[40px] shadow-professional border border-gray-100 hover:border-field-green transition-all duration-500 cursor-pointer group" onClick={() => setView('public')}>
+              <div className="bg-white p-12 rounded-[40px] shadow-professional border border-gray-100 hover:border-field-green transition-all duration-500 cursor-pointer group relative" onClick={() => setView('public')}>
+                {state.publicChampionshipId && (
+                  <div className="absolute top-6 right-6">
+                    <span className="flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500"></span>
+                    </span>
+                  </div>
+                )}
                 <div className="w-20 h-20 bg-green-50 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
                   <Users className="w-10 h-10 text-field-green" />
                 </div>

@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { AppState, FlightData, Championship } from '../types.ts';
-import { Trophy, Search, X, Clock, Navigation, Zap, ArrowUpCircle, Timer, ShieldAlert, BadgeCheck, Minus, Plus, Star, Bird, Medal, Users, ChevronRight } from 'lucide-react';
+import { Trophy, Search, X, Clock, Navigation, Zap, ArrowUpCircle, Timer, ShieldAlert, BadgeCheck, Minus, Plus, Star, Bird, Medal, Users, ChevronRight, RefreshCw, Radio } from 'lucide-react';
 import { SCORING, CAPTURA_LABELS, APP_VERSION } from '../constants.ts';
 import { supabase } from '../supabase.ts';
 
@@ -11,6 +10,8 @@ interface Props {
 
 const PublicView: React.FC<Props> = ({ state }) => {
   const [selectedFlight, setSelectedFlight] = useState<FlightData | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [isSyncing, setIsSyncing] = useState(false);
   const [currentChamp, setCurrentChamp] = useState<Championship | null>(
     state.championships.find(c => c.id === state.publicChampionshipId) || null
   );
@@ -18,14 +19,36 @@ const PublicView: React.FC<Props> = ({ state }) => {
   useEffect(() => {
     if (!supabase || !state.publicChampionshipId) return;
 
+    // Suscripción en tiempo real a cambios en el campeonato activo
     const channel = supabase
-      .channel('public-results')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'championships', filter: `id=eq.${state.publicChampionshipId}` }, (payload) => {
+      .channel('public-results-live')
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'championships', 
+        filter: `id=eq.${state.publicChampionshipId}` 
+      }, (payload) => {
+          console.log("¡NUEVOS DATOS RECIBIDOS EN TIEMPO REAL!");
+          setIsSyncing(true);
           setCurrentChamp(payload.new as Championship);
+          setLastUpdate(new Date());
+          
+          // Animación visual de refresco
+          setTimeout(() => setIsSyncing(false), 2000);
+          
+          // Si tenemos un vuelo seleccionado, actualizamos sus datos si han cambiado
+          if (selectedFlight) {
+            const updatedParticipants = (payload.new as Championship).participants;
+            const updatedFlight = updatedParticipants.find(p => p.id === selectedFlight.id);
+            if (updatedFlight) setSelectedFlight(updatedFlight);
+          }
       })
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [state.publicChampionshipId]);
+
+    return () => { 
+      supabase.removeChannel(channel); 
+    };
+  }, [state.publicChampionshipId, selectedFlight]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -48,7 +71,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
   const sortedParticipants = [...currentChamp.participants].sort((a, b) => b.totalPoints - a.totalPoints);
   const podium = sortedParticipants.slice(0, 3);
 
-  // Cálculos para el modal de detalles
   const getTechnicalBreakdown = (flight: FlightData) => {
     const altPts = SCORING.calculateAlturaPoints(flight.alturaServicio);
     const picPts = SCORING.calculatePicadoPoints(flight.velocidadPicado);
@@ -61,6 +83,14 @@ const PublicView: React.FC<Props> = ({ state }) => {
 
   return (
     <div className="max-w-md mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-24 no-scrollbar">
+      {/* Indicador de Tiempo Real */}
+      <div className="flex justify-center items-center gap-2 mb-2">
+        <div className={`px-4 py-1.5 rounded-full flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.2em] shadow-sm transition-all duration-500 ${isSyncing ? 'bg-field-green text-white scale-105' : 'bg-white text-gray-400'}`}>
+          <Radio className={`w-3 h-3 ${isSyncing ? 'animate-pulse' : 'text-field-green animate-pulse'}`} />
+          {isSyncing ? 'Actualizando Datos...' : `Sincronizado: ${lastUpdate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}`}
+        </div>
+      </div>
+
       {/* Header Compacto */}
       <div className="text-center space-y-2 px-4">
         <h2 className="text-xl md:text-3xl font-black text-gray-900 tracking-tighter leading-tight uppercase">{currentChamp.name}</h2>
@@ -73,7 +103,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
       {/* Podium Compacto */}
       {podium.length > 0 && (
         <div className="flex items-end justify-center gap-1 sm:gap-3 px-2 py-6">
-          {/* Segundo */}
           {podium[1] && (
             <div className="flex-1 bg-white border border-slate-100 rounded-2xl p-3 shadow-sm flex flex-col items-center animate-in slide-in-from-bottom-4 delay-100 max-w-[100px]">
               <div className="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500 font-black text-[10px] mb-2">2º</div>
@@ -81,7 +110,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
               <p className="text-xs font-black text-slate-600 mt-0.5">{podium[1].totalPoints.toFixed(1)}</p>
             </div>
           )}
-          {/* Primero */}
           {podium[0] && (
             <div className="flex-1 bg-white border-2 border-yellow-400 rounded-2xl p-4 shadow-xl flex flex-col items-center relative -top-4 animate-in slide-in-from-bottom-6 max-w-[120px]">
               <Trophy className="w-5 h-5 text-yellow-500 mb-2" />
@@ -90,7 +118,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
               <p className="text-base font-black text-field-green mt-0.5">{podium[0].totalPoints.toFixed(1)}</p>
             </div>
           )}
-          {/* Tercero */}
           {podium[2] && (
             <div className="flex-1 bg-white border border-orange-100 rounded-2xl p-3 shadow-sm flex flex-col items-center animate-in slide-in-from-bottom-4 delay-200 max-w-[100px]">
               <div className="w-7 h-7 bg-orange-50 rounded-lg flex items-center justify-center text-orange-600 font-black text-[10px] mb-2">3º</div>
@@ -104,37 +131,36 @@ const PublicView: React.FC<Props> = ({ state }) => {
       {/* Lista Principal de Clasificación */}
       <div className="bg-white rounded-[28px] shadow-professional border border-gray-100 overflow-hidden mx-1">
         <div className="bg-gray-50/80 px-4 py-2 border-b flex justify-between items-center">
-          <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Clasificación General</span>
-          <span className="text-[8px] font-black uppercase text-gray-400">{sortedParticipants.length} Vuelos</span>
+          <div className="flex items-center gap-2">
+            <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Clasificación General</span>
+            {isSyncing && <RefreshCw className="w-2.5 h-2.5 text-field-green animate-spin" />}
+          </div>
+          <span className="text-[8px] font-black uppercase text-gray-400">{sortedParticipants.length} Vuelos Registrados</span>
         </div>
         
         <div className="divide-y divide-gray-50">
           {sortedParticipants.map((p, i) => (
-            <div key={p.id} className="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors">
-              {/* Pos */}
-              <div className={`w-8 h-8 shrink-0 rounded-xl flex items-center justify-center font-black text-xs ${
-                i === 0 ? 'bg-yellow-400 text-yellow-900' : 
+            <div key={p.id} className="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors group">
+              <div className={`w-8 h-8 shrink-0 rounded-xl flex items-center justify-center font-black text-xs transition-all ${
+                i === 0 ? 'bg-yellow-400 text-yellow-900 shadow-sm' : 
                 i === 1 ? 'bg-slate-200 text-slate-700' : 
                 i === 2 ? 'bg-orange-300 text-orange-900' : 'bg-gray-100 text-gray-300'
               }`}>
                 {i + 1}
               </div>
               
-              {/* Cetrero */}
               <div className="min-w-0 flex-1">
                 <p className="font-black text-xs text-gray-900 uppercase truncate leading-none">{p.falconerName}</p>
                 <p className="text-[8px] text-gray-400 font-bold uppercase tracking-widest truncate mt-0.5">{p.falconName}</p>
               </div>
 
-              {/* Puntos */}
               <div className="text-right shrink-0">
                 <p className={`text-sm font-black tracking-tighter leading-none ${p.totalPoints === 0 ? 'text-red-500' : 'text-field-green'}`}>
                   {p.totalPoints === 0 ? 'DESC.' : p.totalPoints.toFixed(1)}
                 </p>
-                <p className="text-[7px] text-gray-300 font-black uppercase tracking-tighter mt-0.5">{p.alturaServicio}m</p>
+                <p className="text-[7px] text-gray-300 font-black uppercase tracking-tighter mt-0.5">{p.alturaServicio}m techo</p>
               </div>
 
-              {/* Lupa */}
               <button 
                 onClick={() => setSelectedFlight(p)} 
                 className="w-8 h-8 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-gray-400 hover:bg-field-green hover:text-white transition-all shadow-sm active:scale-90"
@@ -151,10 +177,9 @@ const PublicView: React.FC<Props> = ({ state }) => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-[340px] rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 relative flex flex-col max-h-[85vh]">
             
-            {/* Header del Modal */}
             <div className="bg-field-green px-6 py-5 text-white flex justify-between items-center shrink-0">
               <div className="min-w-0">
-                <span className="text-[7px] uppercase font-black tracking-widest text-white/50 block mb-0.5">Acta de Vuelo Oficial</span>
+                <span className="text-[7px] uppercase font-black tracking-widest text-white/50 block mb-0.5">Acta de Vuelo Oficial v{APP_VERSION}</span>
                 <h3 className="text-base font-black leading-none uppercase truncate">{selectedFlight.falconerName}</h3>
               </div>
               <button 
@@ -165,9 +190,7 @@ const PublicView: React.FC<Props> = ({ state }) => {
               </button>
             </div>
             
-            {/* Contenido del Modal */}
             <div className="p-5 space-y-5 overflow-y-auto no-scrollbar">
-              {/* Métricas clave */}
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="bg-gray-50 p-2.5 rounded-xl text-center border border-gray-100">
                   <ArrowUpCircle className="w-3 h-3 mx-auto text-field-green mb-1" />
@@ -186,10 +209,9 @@ const PublicView: React.FC<Props> = ({ state }) => {
                 </div>
               </div>
 
-              {/* DESGLOSE TÉCNICO DETALLADO */}
               <div className="bg-green-50/40 rounded-2xl border border-green-100/50 overflow-hidden">
                 <div className="px-4 py-2 bg-green-100/30 border-b border-green-100/50 flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-field-green">Desglose Técnico</span>
+                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-field-green">Vuelo Técnico Desglosado</span>
                   <div className="w-4 h-4 rounded-full bg-field-green flex items-center justify-center">
                      <Medal className="w-2.5 h-2.5 text-white" />
                   </div>
@@ -234,10 +256,9 @@ const PublicView: React.FC<Props> = ({ state }) => {
                 </div>
               </div>
 
-              {/* Otros Puntos */}
               <div className="space-y-1.5 px-1">
                 <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase">
-                  <span>Bonos (Recogida + Tiempo)</span>
+                  <span>Bonificaciones de Vuelo</span>
                   <span className="text-field-green">+{ (selectedFlight['bon recogida'] + SCORING.calculateTimeBonus(selectedFlight.tiempoVuelo)).toFixed(1) }</span>
                 </div>
                 
@@ -249,7 +270,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
                 )}
               </div>
 
-              {/* Penalizaciones (Compacto) */}
               {(selectedFlight.penSenueloEncarnado || selectedFlight.penEnsenarSenuelo || selectedFlight.penSueltaObligada || selectedFlight.penPicado > 0) && (
                 <div className="bg-red-50/50 p-4 rounded-2xl border border-red-100/50">
                   <p className="text-[7px] font-black uppercase text-red-400 mb-2 tracking-widest flex items-center gap-1">
@@ -263,22 +283,22 @@ const PublicView: React.FC<Props> = ({ state }) => {
                 </div>
               )}
 
-              {/* Total Final */}
               <div className="pt-2 border-t border-gray-100 text-center space-y-1">
                 <div className="flex flex-col items-center">
-                   <p className="text-[8px] font-black uppercase text-gray-400 tracking-[0.3em] mb-1">Resultado Final del Acta</p>
+                   <p className="text-[8px] font-black uppercase text-gray-400 tracking-[0.3em] mb-1">Puntuación Final Acta</p>
                    <p className={`text-4xl font-black tracking-tighter ${selectedFlight.totalPoints === 0 ? 'text-red-500' : 'text-field-green'}`}>
                      {selectedFlight.totalPoints === 0 ? 'DESC.' : selectedFlight.totalPoints.toFixed(1)}
                    </p>
                 </div>
-                <p className="text-[7px] font-black uppercase text-gray-300 tracking-[0.2em] mt-2 italic">Certificación Oficial v{APP_VERSION}</p>
+                <p className="text-[7px] font-black uppercase text-gray-300 tracking-[0.2em] mt-2 italic flex items-center justify-center gap-2">
+                  <Radio className="w-2.5 h-2.5 animate-pulse text-field-green" /> Sincronizado en Vivo
+                </p>
               </div>
             </div>
             
-            {/* Botón de cierre móvil redundante */}
             <div className="p-4 bg-gray-50 border-t md:hidden">
-               <button onClick={() => setSelectedFlight(null)} className="w-full py-2.5 bg-white border border-gray-200 rounded-xl font-black uppercase text-[9px] tracking-widest text-gray-500 active:bg-gray-100 transition-colors">
-                  Cerrar Detalles
+               <button onClick={() => setSelectedFlight(null)} className="w-full py-3 bg-white border border-gray-200 rounded-xl font-black uppercase text-[9px] tracking-widest text-gray-500 active:bg-gray-100 transition-colors">
+                  Volver a Clasificación
                </button>
             </div>
           </div>
