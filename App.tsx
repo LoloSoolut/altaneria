@@ -104,6 +104,8 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, ...newState }));
   };
 
+  const activePublicChampName = state.championships.find(c => c.id === state.publicChampionshipId)?.name;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#fcfcf9]">
@@ -172,7 +174,7 @@ const App: React.FC = () => {
                     {state.publicChampionshipId ? (
                       <div className="flex items-center gap-3 self-start">
                         <span className="text-white bg-red-600 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.25em] shadow-xl flex items-center gap-2">
-                          <Radio className="w-3 h-3 animate-pulse" /> Competición en Directo
+                          <Radio className="w-3 h-3 animate-pulse" /> Competición en Directo {activePublicChampName && `- ${activePublicChampName}`}
                         </span>
                       </div>
                     ) : (
