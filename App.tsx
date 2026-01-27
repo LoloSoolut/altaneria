@@ -257,26 +257,19 @@ const App: React.FC = () => {
         {view === 'public' && <PublicView state={state} />}
       </main>
 
-      <footer className="bg-[#1a1a1a] text-white py-12 border-t border-white/5">
-        <div className="container mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-8 border-b border-white/10 pb-12 mb-12">
-            <div className="flex items-center gap-3">
-              <Bird className="w-10 h-10 text-field-green" />
-            </div>
-          </div>
-          <div className="text-center">
-            <p className="text-[10px] font-black opacity-30 tracking-[0.5em] uppercase italic">
-              Copyright 2026 todos los derechos reservados - Creado por{' '}
-              <a 
-                href="https://soolut.com/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-field-green hover:text-white transition-colors decoration-dotted underline underline-offset-4"
-              >
-                Soolut
-              </a>
-            </p>
-          </div>
+      <footer className="bg-[#1a1a1a] text-white py-10 border-t border-white/5">
+        <div className="container mx-auto px-6 text-center">
+          <p className="text-[9px] font-light opacity-50 tracking-[0.15em] uppercase">
+            Copyright 2026 todos los derechos reservados - Creado por{' '}
+            <a 
+              href="https://soolut.com/" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-field-green hover:text-white transition-colors decoration-dotted underline underline-offset-4 font-medium"
+            >
+              Soolut
+            </a>
+          </p>
         </div>
       </footer>
     </div>
