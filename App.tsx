@@ -136,7 +136,6 @@ const App: React.FC = () => {
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight leading-none uppercase">
                 COMPETICIONES DE ALTANERÍA
               </h1>
-              <p className="text-[10px] uppercase tracking-[0.3em] font-light mt-1 opacity-70">Para Profesionales de la Cetrería</p>
             </div>
           </div>
           <nav className="flex bg-black/10 p-1.5 rounded-2xl backdrop-blur-md">
@@ -261,11 +260,7 @@ const App: React.FC = () => {
           <div className="flex flex-col md:flex-row justify-between items-center gap-8 border-b border-white/10 pb-12 mb-12">
             <div className="flex items-center gap-3">
               <Bird className="w-10 h-10 text-field-green" />
-              <span className="text-2xl font-black tracking-tighter">ALTANERÍA PRO</span>
             </div>
-            <p className="text-sm text-gray-500 font-light text-center md:text-right max-w-sm">
-              v{APP_VERSION} - Plataforma técnica oficial para la gestión de alta competición de cetrería.
-            </p>
           </div>
           <div className="text-center">
             <p className="text-[10px] font-black opacity-30 tracking-[0.5em] uppercase italic">
