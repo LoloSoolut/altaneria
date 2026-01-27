@@ -268,7 +268,17 @@ const App: React.FC = () => {
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[10px] font-black opacity-30 tracking-[0.5em] uppercase italic">COMPETICIONES DE ALTANERÍA PARA PROFESIONALES © 2024</p>
+            <p className="text-[10px] font-black opacity-30 tracking-[0.5em] uppercase italic">
+              Copyright 2026 todos los derechos reservados - Creado por{' '}
+              <a 
+                href="https://soolut.com/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-field-green hover:text-white transition-colors decoration-dotted underline underline-offset-4"
+              >
+                Soolut
+              </a>
+            </p>
           </div>
         </div>
       </footer>
