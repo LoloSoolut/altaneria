@@ -7,7 +7,6 @@ import {
   Edit3, 
   Gavel, 
   Clock, 
-  CloudOff, 
   Cloud, 
   RefreshCw, 
   FileDown, 
@@ -15,7 +14,6 @@ import {
   Bird,
   Eye,
   EyeOff,
-  CheckCircle2,
   ChevronRight
 } from 'lucide-react';
 
@@ -38,7 +36,6 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
 
   const selectedChamp = state.championships.find(c => c.id === state.selectedChampionshipId);
 
-  // CRITICAL FIX: Resetear vistas internas al cambiar de campeonato seleccionado
   useEffect(() => {
     setEditingFlightId(null);
     setIsAddingParticipant(false);
@@ -90,31 +87,50 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
   };
 
   const togglePublic = async (id: string) => {
-    const updatedChamps = state.championships.map(c => {
-      if (c.id === id) {
-        const willBePublic = !c.isPublic;
-        return { 
-          ...c, 
-          isPublic: willBePublic, 
-          publishedAt: willBePublic ? Date.now() : c.publishedAt 
-        };
-      }
-      return { ...c, isPublic: false };
-    });
+    if (!supabase) return;
+    setSyncing(true);
+    
+    try {
+      // 1. Encontrar el campeonato que queremos cambiar
+      const targetChamp = state.championships.find(c => c.id === id);
+      if (!targetChamp) return;
 
-    const activePublicChamp = updatedChamps.find(c => c.isPublic);
-    onUpdateState({ championships: updatedChamps, publicChampionshipId: activePublicChamp?.id || null });
+      const newPublicStatus = !targetChamp.isPublic;
+      const now = Date.now();
 
-    if (supabase) {
-      setSyncing(true);
-      try {
-        await supabase.from('championships').update({ isPublic: false }).neq('id', 'temp-id');
-        if (activePublicChamp) await syncChampionship(activePublicChamp);
-      } catch (e) {
-        setLastError("Error de publicación");
-      } finally {
-        setSyncing(false);
+      // 2. Operación Atómica en Supabase: Desactivar todos los públicos
+      await supabase.from('championships').update({ isPublic: false }).neq('id', 'temp-id');
+
+      // 3. Si lo estamos activando, encender este específicamente con su timestamp
+      if (newPublicStatus) {
+        const { error } = await supabase
+          .from('championships')
+          .update({ 
+            isPublic: true, 
+            publishedAt: now 
+          })
+          .eq('id', id);
+        
+        if (error) throw error;
       }
+
+      // 4. Actualizar estado local para reflejar el cambio inmediato
+      const updatedChamps = state.championships.map(c => ({
+        ...c,
+        isPublic: c.id === id ? newPublicStatus : false,
+        publishedAt: c.id === id && newPublicStatus ? now : c.publishedAt
+      }));
+
+      onUpdateState({ 
+        championships: updatedChamps, 
+        publicChampionshipId: newPublicStatus ? id : null 
+      });
+
+    } catch (e: any) {
+      console.error("Error al publicar:", e.message);
+      setLastError("Error de red al publicar");
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -198,10 +214,10 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
       <div className={`px-5 py-3 rounded-2xl flex items-center justify-between transition-all ${!supabase ? 'bg-orange-50 text-orange-600' : lastError ? 'bg-red-50 text-red-600' : 'bg-green-50 text-field-green'}`}>
         <div className="flex items-center gap-3">
           {syncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Cloud className="w-4 h-4" />}
-          <p className="text-[10px] font-black uppercase tracking-widest">{lastError ? 'Error de Sincronización' : 'Base de Datos en Tiempo Real Activa'}</p>
+          <p className="text-[10px] font-black uppercase tracking-widest">{lastError ? lastError : syncing ? 'Publicando cambios...' : 'Conectado al Servidor Central'}</p>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-[10px] font-black opacity-30">PRO SYSTEM v{APP_VERSION}</span>
+          <span className="text-[10px] font-black opacity-30 uppercase tracking-[0.2em]">Live System v{APP_VERSION}</span>
         </div>
       </div>
 
@@ -214,7 +230,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
               </div>
               <div>
                 <h2 className="text-3xl font-black text-gray-800 uppercase tracking-tighter leading-none">Control de Vuelos</h2>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-2 italic">Gabinete Arbitral Oficial</p>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] mt-2 italic">Gestión de Eventos en Tiempo Real</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-3 w-full sm:w-auto">
@@ -316,7 +332,6 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
         </div>
 
         <div className="xl:col-span-1 space-y-8 order-1 xl:order-2">
-          {/* Historial de Campeonatos */}
           <div className="bg-white p-8 rounded-[40px] shadow-professional border border-gray-100 sticky top-32">
             <h3 className="font-black text-[11px] uppercase tracking-[0.3em] mb-8 text-gray-400 flex items-center gap-3 border-b pb-6">
               <Clock className="w-5 h-5" /> Historial Técnico
@@ -331,20 +346,20 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                   
                   <button 
                     onClick={(e) => { e.stopPropagation(); togglePublic(champ.id); }} 
+                    disabled={syncing}
                     className={`w-full text-[9px] py-4 rounded-2xl border-2 uppercase font-black tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
                       champ.isPublic 
                         ? 'bg-field-green text-white border-field-green shadow-lg' 
                         : (state.selectedChampionshipId === champ.id ? 'border-white/20 text-white hover:bg-white/10' : 'border-gray-200 text-gray-400 hover:border-field-green hover:text-field-green')
-                    }`}
+                    } ${syncing ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    {champ.isPublic ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {syncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : champ.isPublic ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     {champ.isPublic ? "Publicado" : "Hacer Público"}
                   </button>
                 </div>
               ))}
             </div>
 
-            {/* INTEGRACIÓN DEL ASISTENTE TÉCNICO IA */}
             <div className="mt-8 border-t pt-8">
               <TechnicalAssistant />
             </div>

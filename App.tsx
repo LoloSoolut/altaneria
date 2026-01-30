@@ -30,15 +30,20 @@ const App: React.FC = () => {
         .order('createdAt', { ascending: false });
 
       if (!error && championships) {
-        const publicChamp = championships.find(c => c.isPublic === true);
+        // Encontramos el campeonato que tenga isPublic = true
+        // Si hay varios (error de concurrencia), cogemos el publicado más recientemente
+        const publicChamps = championships.filter(c => c.isPublic === true);
+        const latestPublic = publicChamps.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0))[0];
         
         setState(prev => ({
           ...prev,
           championships,
-          // Mantenemos la selección actual si existe, sino cogemos el primero
+          // Mantenemos la selección manual del juez si ya existe
           selectedChampionshipId: prev.selectedChampionshipId || (championships[0]?.id || null),
-          publicChampionshipId: publicChamp?.id || null
+          publicChampionshipId: latestPublic?.id || null
         }));
+        
+        console.log("📡 Datos Sincronizados v1.5.7. Público:", latestPublic?.name || 'Ninguno');
       }
     } catch (e) {
       console.error("Error en fetchData:", e);
@@ -50,7 +55,7 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchData();
 
-    const channel = supabase?.channel('sync-v1.5.6')
+    const channel = supabase?.channel('sync-live-v1.5.7')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'championships' }, () => {
         fetchData();
       })
@@ -96,7 +101,7 @@ const App: React.FC = () => {
             <div className="bg-white p-2 rounded-lg shadow-inner group-hover:rotate-3 transition-transform">
               <Trophy className="w-8 h-8 text-field-green" />
             </div>
-            <h1 className="text-xl md:text-2xl font-black uppercase tracking-tighter">Competiciones de Altanería</h1>
+            <h1 className="text-xl md:text-2xl font-black uppercase tracking-tighter text-shadow-sm">Competiciones de Altanería</h1>
           </div>
           <nav className="flex bg-black/10 p-1.5 rounded-2xl backdrop-blur-md">
             <button onClick={() => setView('home')} className={`px-6 py-2.5 rounded-xl font-bold transition-all ${view === 'home' ? 'bg-white text-field-green shadow-lg' : 'hover:bg-white/5'}`}>Inicio</button>
@@ -144,13 +149,13 @@ const App: React.FC = () => {
                   <h2 className="text-white text-4xl md:text-7xl font-black mb-4 tracking-tighter uppercase drop-shadow-2xl max-w-2xl leading-none">
                     Excelencia en Altanería
                   </h2>
-                  <p className="text-white/80 text-lg md:text-xl font-light max-w-2xl italic border-l-4 border-field-green pl-6 bg-black/40 p-6 rounded-r-3xl backdrop-blur-xl mb-8">
+                  <p className="text-white/80 text-lg md:text-xl font-light max-w-2xl italic border-l-4 border-field-green pl-6 bg-black/40 p-6 rounded-r-3xl backdrop-blur-xl mb-8 leading-relaxed">
                     "Rigurosidad técnica y pasión por el vuelo. El estándar profesional para el registro oficial de competiciones cetreras."
                   </p>
                   
                   <div className="flex flex-wrap gap-4">
                     <button onClick={() => setView('public')} className="bg-field-green text-white px-8 py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-3 hover:bg-green-700 transition-all shadow-2xl shadow-green-900/40 active:scale-95 group">
-                      Ver Resultados <Users className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      Ver Clasificación <Users className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </button>
                     <button onClick={() => setView('judge')} className="bg-white/10 backdrop-blur-md text-white border border-white/20 px-8 py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-3 hover:bg-white/20 transition-all active:scale-95">
                       Acceso Jurado <ShieldCheck className="w-4 h-4" />
