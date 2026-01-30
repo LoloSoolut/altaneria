@@ -18,7 +18,6 @@ import {
 } from 'lucide-react';
 
 import FlightScoringForm from './FlightScoringForm.tsx';
-import TechnicalAssistant from './TechnicalAssistant.tsx';
 import { SCORING, APP_VERSION } from '../constants.ts';
 
 interface Props {
@@ -91,17 +90,14 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
     setSyncing(true);
     
     try {
-      // 1. Encontrar el campeonato que queremos cambiar
       const targetChamp = state.championships.find(c => c.id === id);
       if (!targetChamp) return;
 
       const newPublicStatus = !targetChamp.isPublic;
       const now = Date.now();
 
-      // 2. Operación Atómica en Supabase: Desactivar todos los públicos
       await supabase.from('championships').update({ isPublic: false }).neq('id', 'temp-id');
 
-      // 3. Si lo estamos activando, encender este específicamente con su timestamp
       if (newPublicStatus) {
         const { error } = await supabase
           .from('championships')
@@ -114,7 +110,6 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
         if (error) throw error;
       }
 
-      // 4. Actualizar estado local para reflejar el cambio inmediato
       const updatedChamps = state.championships.map(c => ({
         ...c,
         isPublic: c.id === id ? newPublicStatus : false,
@@ -358,10 +353,6 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                   </button>
                 </div>
               ))}
-            </div>
-
-            <div className="mt-8 border-t pt-8">
-              <TechnicalAssistant />
             </div>
           </div>
         </div>

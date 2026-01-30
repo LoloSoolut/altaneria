@@ -57,6 +57,14 @@ const PublicView: React.FC<Props> = ({ state }) => {
     return `${mins} min ${secs}s`;
   };
 
+  const handleManualRefresh = () => {
+    // Animación visual antes de recargar
+    setIsSyncing(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 300);
+  };
+
   if (!currentChamp) {
     return (
       <div className="text-center py-24 animate-pulse px-4">
@@ -65,6 +73,12 @@ const PublicView: React.FC<Props> = ({ state }) => {
         </div>
         <h3 className="text-2xl font-black text-gray-400 font-serif text-center uppercase tracking-tighter">Preparando Resultados</h3>
         <p className="text-gray-400 mt-2 font-medium text-xs md:text-sm">Sincronizando con el centro de jueces...</p>
+        <button 
+          onClick={handleManualRefresh}
+          className="mt-8 px-8 py-4 bg-field-green text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center gap-3 mx-auto"
+        >
+          <RefreshCw className="w-4 h-4" /> Forzar Refresco
+        </button>
       </div>
     );
   }
@@ -83,7 +97,17 @@ const PublicView: React.FC<Props> = ({ state }) => {
   };
 
   return (
-    <div className="max-w-md mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-24 no-scrollbar">
+    <div className="max-w-md mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-24 no-scrollbar relative">
+      
+      {/* Botón Flotante de Refresco (FAB) */}
+      <button 
+        onClick={handleManualRefresh}
+        className="fixed bottom-8 right-6 w-14 h-14 bg-field-green text-white rounded-2xl shadow-2xl flex items-center justify-center hover:bg-green-700 active:scale-95 transition-all z-[90] border-2 border-white/20 group"
+        title="Actualizar Clasificación"
+      >
+        <RefreshCw className={`w-6 h-6 transition-transform duration-500 group-hover:rotate-180 ${isSyncing ? 'animate-spin' : ''}`} />
+      </button>
+
       {/* Indicador de Tiempo Real */}
       <div className="flex justify-center items-center gap-2 mb-2">
         <div className={`px-4 py-1.5 rounded-full flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.2em] shadow-sm transition-all duration-500 ${isSyncing ? 'bg-field-green text-white scale-105' : 'bg-white text-gray-400'}`}>
@@ -101,7 +125,7 @@ const PublicView: React.FC<Props> = ({ state }) => {
         </div>
       </div>
 
-      {/* Cuadro de Hora de Publicación Grabado en Base de Datos */}
+      {/* Cuadro de Hora de Publicación */}
       {currentChamp.publishedAt && (
         <div className="mx-1 bg-white border-2 border-field-green/30 rounded-[28px] p-5 flex items-center justify-between shadow-lg shadow-green-900/5 animate-in zoom-in-95 duration-500">
           <div className="flex items-center gap-4">
@@ -110,7 +134,7 @@ const PublicView: React.FC<Props> = ({ state }) => {
             </div>
             <div>
               <p className="text-[9px] font-black uppercase tracking-[0.2em] text-field-green leading-none mb-1">Publicación Oficial</p>
-              <h3 className="text-sm font-black text-gray-800 uppercase tracking-tighter">Resultados Grabados</h3>
+              <h3 className="text-sm font-black text-gray-800 uppercase tracking-tighter text-wrap max-w-[120px]">Resultados Grabados</h3>
             </div>
           </div>
           <div className="text-right border-l pl-5 border-gray-100">
@@ -152,12 +176,17 @@ const PublicView: React.FC<Props> = ({ state }) => {
 
       {/* Lista Principal de Clasificación */}
       <div className="bg-white rounded-[28px] shadow-professional border border-gray-100 overflow-hidden mx-1">
-        <div className="bg-gray-50/80 px-4 py-2 border-b flex justify-between items-center">
+        <div className="bg-gray-50/80 px-4 py-3 border-b flex justify-between items-center">
           <div className="flex items-center gap-2">
             <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Clasificación General</span>
             {isSyncing && <RefreshCw className="w-2.5 h-2.5 text-field-green animate-spin" />}
           </div>
-          <span className="text-[8px] font-black uppercase text-gray-400">{sortedParticipants.length} Vuelos Registrados</span>
+          <button 
+            onClick={handleManualRefresh}
+            className="flex items-center gap-1 px-2 py-1 bg-white border rounded-lg text-[7px] font-black uppercase text-field-green hover:bg-field-green hover:text-white transition-all shadow-sm"
+          >
+            <RefreshCw className="w-2.5 h-2.5" /> Actualizar
+          </button>
         </div>
         
         <div className="divide-y divide-gray-50">
