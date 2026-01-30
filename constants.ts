@@ -1,7 +1,7 @@
 import { CapturaType } from './types.ts';
 
-// Versión 1.5.6: Diseño Premium restaurado
-export const APP_VERSION = "1.5.6";
+// Versión 1.5.7: Parche de exclusividad y auto-saneamiento
+export const APP_VERSION = "1.5.7";
 
 export const SCORING = {
   calculateAlturaPoints: (meters: number) => meters * 0.1,

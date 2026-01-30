@@ -3,11 +3,10 @@ import { Championship, AppState } from './types.ts';
 import JudgePanel from './components/JudgePanel.tsx';
 import PublicView from './components/PublicView.tsx';
 import { supabase } from './supabase.ts';
-import { Trophy, Gavel, Users, ShieldCheck, Loader2, AlertCircle, Bird, Radio, ChevronRight } from 'lucide-react';
+import { Trophy, Gavel, Users, ShieldCheck, Bird, Radio, ChevronRight } from 'lucide-react';
 import { APP_VERSION } from './constants.ts';
 
 const App: React.FC = () => {
-  // Inicializar la vista desde localStorage si existe, por defecto 'home'
   const [view, setView] = useState<'home' | 'judge' | 'public'>(() => {
     const savedView = localStorage.getItem('altaneria_current_view');
     return (savedView as 'home' | 'judge' | 'public') || 'home';
@@ -22,7 +21,6 @@ const App: React.FC = () => {
     publicChampionshipId: null
   });
 
-  // Persistir la vista seleccionada cada vez que cambie
   useEffect(() => {
     localStorage.setItem('altaneria_current_view', view);
   }, [view]);
@@ -40,19 +38,46 @@ const App: React.FC = () => {
         .order('createdAt', { ascending: false });
 
       if (!error && championships) {
-        // Lógica de resolución de conflictos: Solo puede haber un público.
-        // Si hay varios, tomamos el que tenga la fecha de publicación (publishedAt) más reciente.
+        // --- SISTEMA DE AUTO-SANEAMIENTO AGRESIVO ---
         const publicChamps = championships.filter(c => c.isPublic === true);
-        const latestPublic = publicChamps.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0))[0];
-        
+        let correctedChampionships = [...championships];
+        let finalPublicId: string | null = null;
+
+        if (publicChamps.length > 1) {
+          console.warn(`⚠️ Detectados ${publicChamps.length} campeonatos públicos. Saneando...`);
+          
+          // Ordenamos por publishedAt (o createdAt como respaldo) para quedarnos con el más reciente
+          const winner = publicChamps.sort((a, b) => {
+            const timeA = a.publishedAt || a.createdAt || 0;
+            const timeB = b.publishedAt || b.createdAt || 0;
+            return Number(timeB) - Number(timeA);
+          })[0];
+          
+          finalPublicId = winner.id;
+          
+          // Forzamos el estado local: solo el 'winner' es público
+          correctedChampionships = championships.map(c => ({
+            ...c,
+            isPublic: c.id === winner.id
+          }));
+
+          // Corregimos la Base de Datos para que en el siguiente fetch ya venga bien
+          // Ponemos a false todos los que NO sean el ganador
+          await supabase.from('championships')
+            .update({ isPublic: false })
+            .neq('id', winner.id);
+            
+          console.log(`✅ Base de datos saneada. Solo '${winner.name}' es público ahora.`);
+        } else {
+          finalPublicId = publicChamps[0]?.id || null;
+        }
+
         setState(prev => ({
           ...prev,
-          championships,
-          selectedChampionshipId: prev.selectedChampionshipId || (championships[0]?.id || null),
-          publicChampionshipId: latestPublic?.id || null
+          championships: correctedChampionships,
+          selectedChampionshipId: prev.selectedChampionshipId || (correctedChampionships[0]?.id || null),
+          publicChampionshipId: finalPublicId
         }));
-        
-        console.log("📡 Sincronización v1.5.7 - Público Actual:", latestPublic?.name || 'Ninguno');
       }
     } catch (e) {
       console.error("Error en fetchData:", e);
@@ -64,7 +89,7 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchData();
 
-    const channel = supabase?.channel('sync-live-v1.5.7')
+    const channel = supabase?.channel('sync-live-global')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'championships' }, () => {
         fetchData();
       })
@@ -133,7 +158,6 @@ const App: React.FC = () => {
       <main className="flex-grow container mx-auto px-4 py-8">
         {view === 'home' && (
           <div className="max-w-5xl mx-auto space-y-16 animate-in fade-in duration-1000 py-10">
-            {/* HERO SECTION */}
             <div className="relative group overflow-hidden rounded-[40px] shadow-2xl bg-white border-8 border-white">
               <div className="relative h-[650px] overflow-hidden">
                 <img 
@@ -174,7 +198,6 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* FEATURES CARDS */}
             <div className="grid md:grid-cols-2 gap-10">
               <div className="bg-white p-12 rounded-[48px] shadow-professional border border-gray-100 hover:border-field-green transition-all duration-500 cursor-pointer group relative overflow-hidden" onClick={() => setView('public')}>
                 <div className="absolute -right-10 -bottom-10 opacity-5 group-hover:opacity-10 transition-opacity">
