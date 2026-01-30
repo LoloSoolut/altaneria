@@ -28,15 +28,11 @@ const PublicView: React.FC<Props> = ({ state }) => {
         table: 'championships', 
         filter: `id=eq.${state.publicChampionshipId}` 
       }, (payload) => {
-          console.log("¡NUEVOS DATOS RECIBIDOS EN TIEMPO REAL!");
           setIsSyncing(true);
           setCurrentChamp(payload.new as Championship);
           setLastUpdate(new Date());
-          
-          // Animación visual de refresco
           setTimeout(() => setIsSyncing(false), 2000);
           
-          // Si tenemos un vuelo seleccionado, actualizamos sus datos si han cambiado
           if (selectedFlight) {
             const updatedParticipants = (payload.new as Championship).participants;
             const updatedFlight = updatedParticipants.find(p => p.id === selectedFlight.id);
@@ -50,19 +46,18 @@ const PublicView: React.FC<Props> = ({ state }) => {
     };
   }, [state.publicChampionshipId, selectedFlight]);
 
+  const handleManualRefresh = () => {
+    setIsSyncing(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 300);
+  };
+
   const formatTime = (seconds: number) => {
     if (!seconds) return "0 min 0s";
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins} min ${secs}s`;
-  };
-
-  const handleManualRefresh = () => {
-    // Animación visual antes de recargar
-    setIsSyncing(true);
-    setTimeout(() => {
-      window.location.reload();
-    }, 300);
   };
 
   if (!currentChamp) {
@@ -92,7 +87,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
     const remVal = SCORING.calculateRemontadaValue(flight.alturaServicio, flight.tiempoVuelo);
     const remPts = SCORING.calculateRemontadaPoints(remVal);
     const distPts = SCORING.calculateServicioPoints(flight.distanciaServicio);
-    
     return { altPts, picPts, remPts, distPts };
   };
 
@@ -108,7 +102,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
         <RefreshCw className={`w-6 h-6 transition-transform duration-500 group-hover:rotate-180 ${isSyncing ? 'animate-spin' : ''}`} />
       </button>
 
-      {/* Indicador de Tiempo Real */}
       <div className="flex justify-center items-center gap-2 mb-2">
         <div className={`px-4 py-1.5 rounded-full flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.2em] shadow-sm transition-all duration-500 ${isSyncing ? 'bg-field-green text-white scale-105' : 'bg-white text-gray-400'}`}>
           <Radio className={`w-3 h-3 ${isSyncing ? 'animate-pulse' : 'text-field-green animate-pulse'}`} />
@@ -116,7 +109,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
         </div>
       </div>
 
-      {/* Header Compacto */}
       <div className="text-center space-y-2 px-4">
         <h2 className="text-xl md:text-3xl font-black text-gray-900 tracking-tighter leading-tight uppercase">{currentChamp.name}</h2>
         <div className="flex flex-wrap items-center justify-center gap-4 text-falcon-brown/50 font-bold uppercase text-[8px] tracking-[0.2em]">
@@ -125,7 +117,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
         </div>
       </div>
 
-      {/* Cuadro de Hora de Publicación */}
       {currentChamp.publishedAt && (
         <div className="mx-1 bg-white border-2 border-field-green/30 rounded-[28px] p-5 flex items-center justify-between shadow-lg shadow-green-900/5 animate-in zoom-in-95 duration-500">
           <div className="flex items-center gap-4">
@@ -146,7 +137,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
         </div>
       )}
 
-      {/* Podium Compacto */}
       {podium.length > 0 && (
         <div className="flex items-end justify-center gap-1 sm:gap-3 px-2 py-6">
           {podium[1] && (
@@ -174,7 +164,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
         </div>
       )}
 
-      {/* Lista Principal de Clasificación */}
       <div className="bg-white rounded-[28px] shadow-professional border border-gray-100 overflow-hidden mx-1">
         <div className="bg-gray-50/80 px-4 py-3 border-b flex justify-between items-center">
           <div className="flex items-center gap-2">
@@ -199,19 +188,16 @@ const PublicView: React.FC<Props> = ({ state }) => {
               }`}>
                 {i + 1}
               </div>
-              
               <div className="min-w-0 flex-1">
                 <p className="font-black text-xs text-gray-900 uppercase truncate leading-none">{p.falconerName}</p>
                 <p className="text-[8px] text-gray-400 font-bold uppercase tracking-widest truncate mt-0.5">{p.falconName}</p>
               </div>
-
               <div className="text-right shrink-0">
                 <p className={`text-sm font-black tracking-tighter leading-none ${p.totalPoints === 0 ? 'text-red-500' : 'text-field-green'}`}>
                   {p.totalPoints === 0 ? 'DESC.' : p.totalPoints.toFixed(2)}
                 </p>
                 <p className="text-[7px] text-gray-300 font-black uppercase tracking-tighter mt-0.5">{p.alturaServicio}m techo</p>
               </div>
-
               <button 
                 onClick={() => setSelectedFlight(p)} 
                 className="w-8 h-8 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center text-gray-400 hover:bg-field-green hover:text-white transition-all shadow-sm active:scale-90"
@@ -223,20 +209,15 @@ const PublicView: React.FC<Props> = ({ state }) => {
         </div>
       </div>
 
-      {/* MODAL DETALLADO */}
       {selectedFlight && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-[340px] rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 relative flex flex-col max-h-[85vh]">
-            
             <div className="bg-field-green px-6 py-5 text-white flex justify-between items-center shrink-0">
               <div className="min-w-0">
                 <span className="text-[7px] uppercase font-black tracking-widest text-white/50 block mb-0.5">Acta de Vuelo Oficial v{APP_VERSION}</span>
                 <h3 className="text-base font-black leading-none uppercase truncate">{selectedFlight.falconerName}</h3>
               </div>
-              <button 
-                onClick={() => setSelectedFlight(null)} 
-                className="w-8 h-8 flex items-center justify-center bg-black/20 hover:bg-white hover:text-field-green rounded-lg transition-all text-white active:scale-90"
-              >
+              <button onClick={() => setSelectedFlight(null)} className="w-8 h-8 flex items-center justify-center bg-black/20 hover:bg-white hover:text-field-green rounded-lg transition-all text-white active:scale-90">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -273,42 +254,26 @@ const PublicView: React.FC<Props> = ({ state }) => {
               <div className="bg-green-50/40 rounded-2xl border border-green-100/50 overflow-hidden">
                 <div className="px-4 py-2 bg-green-100/30 border-b border-green-100/50 flex justify-between items-center">
                   <span className="text-[8px] font-black uppercase tracking-[0.2em] text-field-green">Vuelo Técnico Desglosado</span>
-                  <div className="w-4 h-4 rounded-full bg-field-green flex items-center justify-center">
-                     <Medal className="w-2.5 h-2.5 text-white" />
-                  </div>
                 </div>
-                
                 <div className="p-3 space-y-2">
                   {(() => {
                     const breakdown = getTechnicalBreakdown(selectedFlight);
                     return (
                       <>
                         <div className="flex justify-between items-center group">
-                          <span className="text-[9px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
-                            <ChevronRight className="w-2.5 h-2.5 text-field-green/40" />
-                            Puntos por Altura
-                          </span>
+                          <span className="text-[9px] font-bold text-gray-500 uppercase">Puntos por Altura</span>
                           <span className="text-[10px] font-black text-field-green">+{breakdown.altPts.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
-                            <ChevronRight className="w-2.5 h-2.5 text-field-green/40" />
-                            Velocidad Picado
-                          </span>
+                          <span className="text-[9px] font-bold text-gray-500 uppercase">Velocidad Picado</span>
                           <span className="text-[10px] font-black text-field-green">+{breakdown.picPts.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
-                            <ChevronRight className="w-2.5 h-2.5 text-field-green/40" />
-                            Tasa de Remontada
-                          </span>
+                          <span className="text-[9px] font-bold text-gray-500 uppercase">Tasa de Remontada</span>
                           <span className="text-[10px] font-black text-field-green">+{breakdown.remPts.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-bold text-gray-500 uppercase flex items-center gap-1.5">
-                            <ChevronRight className="w-2.5 h-2.5 text-field-green/40" />
-                            Posición Servicio
-                          </span>
+                          <span className="text-[9px] font-bold text-gray-500 uppercase">Posición Servicio</span>
                           <span className="text-[10px] font-black text-field-green">+{breakdown.distPts.toFixed(2)}</span>
                         </div>
                       </>
@@ -317,49 +282,19 @@ const PublicView: React.FC<Props> = ({ state }) => {
                 </div>
               </div>
 
-              <div className="space-y-1.5 px-1">
-                <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase">
-                  <span>Bonificaciones de Vuelo</span>
-                  <span className="text-field-green">+{ (selectedFlight['bon recogida'] + SCORING.calculateTimeBonus(selectedFlight.tiempoVuelo)).toFixed(2) }</span>
-                </div>
-                
-                {selectedFlight.capturaType && (
-                  <div className="flex justify-between text-[9px] font-black text-white bg-field-green px-3 py-2 rounded-xl uppercase shadow-sm">
-                    <span className="flex items-center gap-2"><Star className="w-3 h-3" /> {CAPTURA_LABELS[selectedFlight.capturaType]}</span>
-                    <span className="font-black">+{ SCORING.calculateCapturaPoints(selectedFlight.capturaType, selectedFlight.alturaServicio).toFixed(2) }</span>
-                  </div>
-                )}
-              </div>
-
-              {(selectedFlight.penSenueloEncarnado || selectedFlight.penEnsenarSenuelo || selectedFlight.penSueltaObligada || selectedFlight.penPicado > 0) && (
-                <div className="bg-red-50/50 p-4 rounded-2xl border border-red-100/50">
-                  <p className="text-[7px] font-black uppercase text-red-400 mb-2 tracking-widest flex items-center gap-1">
-                    <ShieldAlert className="w-3 h-3" /> Penalizaciones Aplicadas
-                  </p>
-                  <div className="space-y-1">
-                    {selectedFlight.penSenueloEncarnado && <div className="flex justify-between text-[8px] font-bold text-red-700 uppercase"><span>Señuelo Encarnado (+ 1/3 paloma)</span> <span>-4.00</span></div>}
-                    {selectedFlight.penSueltaObligada && <div className="flex justify-between text-[8px] font-bold text-red-700 uppercase"><span>Suelta Obligada</span> <span>-10.00</span></div>}
-                    {selectedFlight.penPicado > 0 && <div className="flex justify-between text-[8px] font-bold text-red-700 uppercase"><span>Estética de Picado</span> <span>-{selectedFlight.penPicado.toFixed(2)}</span></div>}
-                  </div>
-                </div>
-              )}
-
               <div className="pt-2 border-t border-gray-100 text-center space-y-1">
-                <div className="flex flex-col items-center">
-                   <p className="text-[8px] font-black uppercase text-gray-400 tracking-[0.3em] mb-1">Puntuación Final Acta</p>
-                   <p className={`text-4xl font-black tracking-tighter ${selectedFlight.totalPoints === 0 ? 'text-red-500' : 'text-field-green'}`}>
-                     {selectedFlight.totalPoints === 0 ? 'DESC.' : selectedFlight.totalPoints.toFixed(2)}
-                   </p>
-                </div>
-                <p className="text-[7px] font-black uppercase text-gray-300 tracking-[0.2em] mt-2 italic flex items-center justify-center gap-2">
+                 <p className="text-[8px] font-black uppercase text-gray-400 tracking-[0.3em] mb-1">Puntuación Final</p>
+                 <p className={`text-4xl font-black tracking-tighter ${selectedFlight.totalPoints === 0 ? 'text-red-500' : 'text-field-green'}`}>
+                   {selectedFlight.totalPoints === 0 ? 'DESC.' : selectedFlight.totalPoints.toFixed(2)}
+                 </p>
+                 <p className="text-[7px] font-black uppercase text-gray-300 tracking-[0.2em] mt-2 italic flex items-center justify-center gap-2">
                   <Radio className="w-2.5 h-2.5 animate-pulse text-field-green" /> Sincronizado en Vivo
                 </p>
               </div>
             </div>
-            
             <div className="p-4 bg-gray-50 border-t md:hidden">
                <button onClick={() => setSelectedFlight(null)} className="w-full py-3 bg-white border border-gray-200 rounded-xl font-black uppercase text-[9px] tracking-widest text-gray-500 active:bg-gray-100 transition-colors">
-                  Volver a Clasificación
+                  Cerrar Acta
                </button>
             </div>
           </div>

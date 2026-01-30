@@ -7,7 +7,12 @@ import { Trophy, Gavel, Users, ShieldCheck, Loader2, AlertCircle, Bird, Radio, C
 import { APP_VERSION } from './constants.ts';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'home' | 'judge' | 'public'>('home');
+  // Inicializar la vista desde localStorage si existe, por defecto 'home'
+  const [view, setView] = useState<'home' | 'judge' | 'public'>(() => {
+    const savedView = localStorage.getItem('altaneria_current_view');
+    return (savedView as 'home' | 'judge' | 'public') || 'home';
+  });
+  
   const [password, setPassword] = useState('');
   const [isAuth, setIsAuth] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -16,6 +21,11 @@ const App: React.FC = () => {
     selectedChampionshipId: null,
     publicChampionshipId: null
   });
+
+  // Persistir la vista seleccionada cada vez que cambie
+  useEffect(() => {
+    localStorage.setItem('altaneria_current_view', view);
+  }, [view]);
 
   const fetchData = useCallback(async () => {
     if (!supabase) {
@@ -30,20 +40,19 @@ const App: React.FC = () => {
         .order('createdAt', { ascending: false });
 
       if (!error && championships) {
-        // Encontramos el campeonato que tenga isPublic = true
-        // Si hay varios (error de concurrencia), cogemos el publicado más recientemente
+        // Lógica de resolución de conflictos: Solo puede haber un público.
+        // Si hay varios, tomamos el que tenga la fecha de publicación (publishedAt) más reciente.
         const publicChamps = championships.filter(c => c.isPublic === true);
         const latestPublic = publicChamps.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0))[0];
         
         setState(prev => ({
           ...prev,
           championships,
-          // Mantenemos la selección manual del juez si ya existe
           selectedChampionshipId: prev.selectedChampionshipId || (championships[0]?.id || null),
           publicChampionshipId: latestPublic?.id || null
         }));
         
-        console.log("📡 Datos Sincronizados v1.5.7. Público:", latestPublic?.name || 'Ninguno');
+        console.log("📡 Sincronización v1.5.7 - Público Actual:", latestPublic?.name || 'Ninguno');
       }
     } catch (e) {
       console.error("Error en fetchData:", e);

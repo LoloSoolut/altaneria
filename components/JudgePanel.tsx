@@ -96,8 +96,11 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
       const newPublicStatus = !targetChamp.isPublic;
       const now = Date.now();
 
-      await supabase.from('championships').update({ isPublic: false }).neq('id', 'temp-id');
+      // GARANTÍA DE EXCLUSIVIDAD:
+      // 1. Ponemos a FALSE todos los campeonatos de la base de datos
+      await supabase.from('championships').update({ isPublic: false }).neq('id', 'dummy-id');
 
+      // 2. Si el objetivo se va a activar, lo encendemos con su marca de tiempo
       if (newPublicStatus) {
         const { error } = await supabase
           .from('championships')
@@ -110,6 +113,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
         if (error) throw error;
       }
 
+      // 3. Actualizamos el estado local de forma coherente
       const updatedChamps = state.championships.map(c => ({
         ...c,
         isPublic: c.id === id ? newPublicStatus : false,
