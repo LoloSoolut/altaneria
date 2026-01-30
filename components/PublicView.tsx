@@ -19,7 +19,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
   useEffect(() => {
     if (!supabase || !state.publicChampionshipId) return;
 
-    // Suscripción en tiempo real a cambios en el campeonato activo
     const channel = supabase
       .channel('public-results-live')
       .on('postgres_changes', { 
@@ -93,7 +92,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
   return (
     <div className="max-w-md mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-24 no-scrollbar relative">
       
-      {/* Botón Flotante de Refresco (FAB) */}
       <button 
         onClick={handleManualRefresh}
         className="fixed bottom-8 right-6 w-14 h-14 bg-field-green text-white rounded-2xl shadow-2xl flex items-center justify-center hover:bg-green-700 active:scale-95 transition-all z-[90] border-2 border-white/20 group"
@@ -124,14 +122,17 @@ const PublicView: React.FC<Props> = ({ state }) => {
               <Calendar className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-field-green leading-none mb-1">Publicación Oficial</p>
-              <h3 className="text-sm font-black text-gray-800 uppercase tracking-tighter text-wrap max-w-[120px]">Resultados Grabados</h3>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-field-green leading-none mb-1">Certificación de Resultados</p>
+              <h3 className="text-sm font-black text-gray-800 uppercase tracking-tighter text-wrap max-w-[150px] leading-tight">Publicación Oficial de Resultados</h3>
             </div>
           </div>
-          <div className="text-right border-l pl-5 border-gray-100">
-            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Hora Publicación</p>
-            <p className="text-xl font-black text-gray-900 tracking-tighter leading-none">
-              {new Date(currentChamp.publishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+          <div className="text-right border-l pl-5 border-gray-100 flex flex-col justify-center">
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Fecha y Hora</p>
+            <p className="text-[10px] font-black text-gray-500 tracking-tight uppercase">
+              {new Date(currentChamp.publishedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            </p>
+            <p className="text-xl font-black text-gray-900 tracking-tighter leading-none mt-1">
+              {new Date(currentChamp.publishedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
         </div>
