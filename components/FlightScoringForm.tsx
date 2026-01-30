@@ -15,7 +15,8 @@ import {
   Star, 
   Clock, 
   AlertTriangle,
-  Gavel
+  Gavel,
+  History
 } from 'lucide-react';
 
 interface Props {
@@ -47,10 +48,10 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
   const isDisqualified = Object.values(formData.disqualifications).some(v => v);
 
   const formatTimeDisplay = (seconds: number) => {
-    if (!seconds) return "0 min 0s";
+    if (!seconds) return "0 min 0 sg";
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins} min ${secs}s`;
+    return `${mins} min ${secs} sg`;
   };
 
   useEffect(() => {
@@ -59,6 +60,24 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
       totalPoints: isDisqualified ? 0 : Number(calculatedTotal.toFixed(2)) 
     }));
   }, [calculatedTotal, isDisqualified]);
+
+  // Helper to handle separate min/sec inputs for a field
+  const handleTimeChange = (field: 'tiempoVuelo' | 'tiempoCortesia' | 'duracionTotalVuelo', type: 'min' | 'sec', value: string) => {
+    const val = parseInt(value) || 0;
+    const currentSeconds = formData[field] || 0;
+    const mins = Math.floor(currentSeconds / 60);
+    const secs = currentSeconds % 60;
+
+    let newTotal = 0;
+    if (type === 'min') {
+      newTotal = (val * 60) + secs;
+    } else {
+      // Cap seconds at 59
+      const cappedSecs = Math.min(59, Math.max(0, val));
+      newTotal = (mins * 60) + cappedSecs;
+    }
+    setFormData({ ...formData, [field]: newTotal });
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 px-1 pb-32 no-scrollbar">
@@ -87,7 +106,7 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
       {/* 2. Métricas de Campo */}
       <section className="bg-gray-50 p-4 md:p-6 rounded-3xl border border-gray-100 shadow-inner">
         <h4 className="font-bold text-[10px] uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">Métricas de Vuelo</h4>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           <div className="space-y-1">
             <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><ArrowUp className="w-3 h-3"/> Altura (m)</label>
             <input type="number" value={formData.alturaServicio || ''} onChange={e => setFormData({...formData, alturaServicio: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-xl font-bold text-base md:text-lg focus:ring-2 focus:ring-field-green outline-none" />
@@ -98,21 +117,109 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
             <input type="number" value={formData.velocidadPicado || ''} onChange={e => setFormData({...formData, velocidadPicado: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-xl font-bold text-base md:text-lg focus:ring-2 focus:ring-field-green outline-none" />
             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">+{picadoPts.toFixed(2)} pts</p>
           </div>
+          
+          {/* TIEMPO DE REMONTADA - Min y Sg */}
           <div className="space-y-1">
-            <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><Timer className="w-3 h-3"/> Tiempo (s)</label>
-            <input type="number" value={formData.tiempoVuelo || ''} onChange={e => setFormData({...formData, tiempoVuelo: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-xl font-bold text-base md:text-lg focus:ring-2 focus:ring-field-green outline-none" />
-            <p className="text-[9px] font-black text-field-green uppercase truncate">{formatTimeDisplay(formData.tiempoVuelo)}</p>
+            <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><Timer className="w-3 h-3"/> T. Remontada</label>
+            <div className="flex items-center gap-1">
+              <div className="relative flex-1">
+                <input 
+                  type="number" 
+                  value={Math.floor(formData.tiempoVuelo / 60) || ''} 
+                  onChange={e => handleTimeChange('tiempoVuelo', 'min', e.target.value)}
+                  className="w-full px-2 py-2 border rounded-xl font-bold text-sm focus:ring-2 focus:ring-field-green outline-none text-center" 
+                  placeholder="00"
+                />
+                <span className="absolute -bottom-4 left-0 right-0 text-[7px] text-center font-black uppercase text-gray-300">Min</span>
+              </div>
+              <span className="text-gray-300 font-black mb-1">:</span>
+              <div className="relative flex-1">
+                <input 
+                  type="number" 
+                  value={formData.tiempoVuelo % 60 || ''} 
+                  onChange={e => handleTimeChange('tiempoVuelo', 'sec', e.target.value)}
+                  className="w-full px-2 py-2 border rounded-xl font-bold text-sm focus:ring-2 focus:ring-field-green outline-none text-center" 
+                  placeholder="00"
+                  max="59"
+                />
+                <span className="absolute -bottom-4 left-0 right-0 text-[7px] text-center font-black uppercase text-gray-300">Sg</span>
+              </div>
+            </div>
+            {/* Espaciador inferior para alineación */}
+            <div className="h-4"></div>
           </div>
+
           <div className="space-y-1">
-            <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><Hourglass className="w-3 h-3"/> Cortesía (s)</label>
-            <input type="number" value={formData.tiempoCortesia || ''} onChange={e => setFormData({...formData, tiempoCortesia: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-xl font-bold text-base md:text-lg focus:ring-2 focus:ring-field-green outline-none" />
-          </div>
-          <div className="space-y-1 col-span-2 md:col-span-1">
-            <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><MapPin className="w-3 h-3"/> Distancia</label>
+            <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><MapPin className="w-3 h-3"/> Pos. Servicio (m)</label>
             <input type="number" value={formData.distanciaServicio || ''} onChange={e => setFormData({...formData, distanciaServicio: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-xl font-bold text-base md:text-lg focus:ring-2 focus:ring-field-green outline-none" />
             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">+{servicioPts.toFixed(2)} pts Pos.</p>
           </div>
         </div>
+      </section>
+
+      {/* 2.5 Información Adicional (Manual) */}
+      <section className="bg-white p-4 md:p-6 rounded-3xl border border-gray-100 shadow-sm">
+        <h4 className="font-bold text-[10px] uppercase tracking-widest text-gray-400 mb-6 flex items-center gap-2 border-b border-gray-100 pb-2">Información Adicional (Manual)</h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 max-w-2xl">
+          {/* DURACIÓN TOTAL */}
+          <div className="space-y-1">
+            <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-gray-600 mb-1"><History className="w-3 h-3"/> Duración Total del Vuelo</label>
+            <div className="flex items-center gap-1">
+              <div className="relative flex-1">
+                <input 
+                  type="number" 
+                  value={Math.floor(formData.duracionTotalVuelo / 60) || ''} 
+                  onChange={e => handleTimeChange('duracionTotalVuelo', 'min', e.target.value)}
+                  className="w-full px-2 py-2 border rounded-xl font-bold text-sm focus:ring-2 focus:ring-gray-300 outline-none text-center bg-gray-50" 
+                  placeholder="00"
+                />
+                <span className="absolute -bottom-4 left-0 right-0 text-[7px] text-center font-black uppercase text-gray-300">Min</span>
+              </div>
+              <span className="text-gray-300 font-black mb-1">:</span>
+              <div className="relative flex-1">
+                <input 
+                  type="number" 
+                  value={formData.duracionTotalVuelo % 60 || ''} 
+                  onChange={e => handleTimeChange('duracionTotalVuelo', 'sec', e.target.value)}
+                  className="w-full px-2 py-2 border rounded-xl font-bold text-sm focus:ring-2 focus:ring-gray-300 outline-none text-center bg-gray-50" 
+                  placeholder="00"
+                  max="59"
+                />
+                <span className="absolute -bottom-4 left-0 right-0 text-[7px] text-center font-black uppercase text-gray-300">Sg</span>
+              </div>
+            </div>
+          </div>
+
+          {/* TIEMPO DE CORTESÍA - Movido aquí */}
+          <div className="space-y-1">
+            <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-gray-600 mb-1"><Hourglass className="w-3 h-3"/> Tiempo de Cortesía</label>
+            <div className="flex items-center gap-1">
+              <div className="relative flex-1">
+                <input 
+                  type="number" 
+                  value={Math.floor(formData.tiempoCortesia / 60) || ''} 
+                  onChange={e => handleTimeChange('tiempoCortesia', 'min', e.target.value)}
+                  className="w-full px-2 py-2 border rounded-xl font-bold text-sm focus:ring-2 focus:ring-gray-300 outline-none text-center bg-gray-50" 
+                  placeholder="00"
+                />
+                <span className="absolute -bottom-4 left-0 right-0 text-[7px] text-center font-black uppercase text-gray-300">Min</span>
+              </div>
+              <span className="text-gray-300 font-black mb-1">:</span>
+              <div className="relative flex-1">
+                <input 
+                  type="number" 
+                  value={formData.tiempoCortesia % 60 || ''} 
+                  onChange={e => handleTimeChange('tiempoCortesia', 'sec', e.target.value)}
+                  className="w-full px-2 py-2 border rounded-xl font-bold text-sm focus:ring-2 focus:ring-gray-300 outline-none text-center bg-gray-50" 
+                  placeholder="00"
+                  max="59"
+                />
+                <span className="absolute -bottom-4 left-0 right-0 text-[7px] text-center font-black uppercase text-gray-300">Sg</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="text-[8px] font-black text-gray-400 mt-8 italic border-t pt-2">* Estos parámetros se registran de forma informativa y no afectan a la puntuación técnica final.</p>
       </section>
 
       {/* 3. Resultado de la Caza */}
@@ -188,7 +295,7 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             {[
-              { id: 'penSenueloEncarnado', label: 'Señuelo encarnado', pts: 4 },
+              { id: 'penSenueloEncarnado', label: 'Señuelo encarnado (+ 1/3 paloma)', pts: 4 },
               { id: 'penEnsenarSenuelo', label: 'Enseñar señuelo', pts: 6 },
               { id: 'penSueltaObligada', label: 'Suelta obligada', pts: 10 }
             ].map(pen => (

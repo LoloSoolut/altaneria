@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AppState, Championship, FlightData } from '../types.ts';
 import { supabase } from '../supabase.ts';
@@ -50,7 +49,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
     doc.setFillColor(...primaryColor);
     doc.rect(0, 0, 297, 40, 'F');
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(26);
+    doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
     doc.text('COMPETICIONES DE ALTANERÍA PARA PROFESIONALES', 15, 22);
     doc.setFontSize(11);
@@ -74,12 +73,15 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                        (p.penSueltaObligada ? 10 : 0) + 
                        (p.penPicado || 0);
 
+      const totalDuration = p.duracionTotalVuelo ? `${Math.floor(p.duracionTotalVuelo / 60)}m ${p.duracionTotalVuelo % 60}s` : '-';
+
       return [
         i + 1,
         p.falconerName,
         p.falconName,
         `${p.alturaServicio}m`,
         `${Math.floor(p.tiempoVuelo / 60)}m ${p.tiempoVuelo % 60}s`,
+        totalDuration,
         `${p.tiempoCortesia}s`,
         `${p.velocidadPicado}km/h`,
         `${p.distanciaServicio}m`,
@@ -93,15 +95,15 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
     // @ts-ignore
     doc.autoTable({
       startY: 75,
-      head: [['Pos', 'Cetrero', 'Halcón', 'Alt(m)', 'T.Vuelo', 'T.Cort(s)', 'Picado', 'Dist(m)', 'B.Rec', 'B.Tie', 'Pen', 'TOTAL']],
+      head: [['Pos', 'Cetrero', 'Halcón', 'Alt(m)', 'T.Rem', 'T.Tot', 'T.Cort(s)', 'Picado', 'Dist(m)', 'B.Rec', 'B.Tie', 'Pen', 'TOTAL']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontSize: 8, halign: 'center', valign: 'middle' },
-      styles: { fontSize: 8, cellPadding: 3, halign: 'center' },
+      styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
       columnStyles: {
-        1: { halign: 'left', cellWidth: 40 },
-        2: { halign: 'left', cellWidth: 35 },
-        11: { cellWidth: 22, fillColor: [245, 245, 245] }
+        1: { halign: 'left', cellWidth: 35 },
+        2: { halign: 'left', cellWidth: 30 },
+        12: { cellWidth: 20, fillColor: [245, 245, 245] }
       }
     });
 
@@ -111,7 +113,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
       doc.text('Este documento constituye el registro oficial de la competición. Cualquier alteración anula su validez.', 15, 200);
-      doc.text(`Sistema Altanería Pro v1.3.2 | Página ${i} de ${pageCount}`, 250, 200);
+      doc.text(`Acta Oficial v${APP_VERSION} | Página ${i} de ${pageCount}`, 250, 200);
     }
 
     doc.save(`${selectedChamp.name}.PDF`);
@@ -131,7 +133,8 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
           location: championship.location,
           participants: championship.participants,
           isPublic: championship.isPublic,
-          createdAt: championship.createdAt
+          createdAt: championship.createdAt,
+          publishedAt: championship.publishedAt
         }, { onConflict: 'id' });
 
       if (error) setLastError(error.message);
@@ -197,10 +200,12 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
   const togglePublic = async (id: string) => {
     const isCurrentlyPublic = state.publicChampionshipId === id;
     const newPublicId = isCurrentlyPublic ? null : id;
+    const publicationTime = newPublicId ? Date.now() : undefined;
     
     const updatedChamps = state.championships.map(c => ({ 
       ...c, 
-      isPublic: c.id === newPublicId 
+      isPublic: c.id === newPublicId,
+      publishedAt: c.id === newPublicId ? publicationTime : c.publishedAt
     }));
 
     onUpdateState({ championships: updatedChamps, publicChampionshipId: newPublicId });
@@ -211,7 +216,11 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
       try {
         await supabase.from('championships').update({ isPublic: false }).neq('id', '00000000-0000-0000-0000-000000000000');
         if (newPublicId) {
-          await supabase.from('championships').update({ isPublic: true }).eq('id', newPublicId);
+          const targetChamp = updatedChamps.find(c => c.id === newPublicId);
+          await supabase.from('championships').update({ 
+            isPublic: true, 
+            publishedAt: publicationTime 
+          }).eq('id', newPublicId);
         }
       } catch (e) {
         setLastError("Error actualizando visibilidad en la nube");
@@ -222,7 +231,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
   };
 
   const emptyFlight = (): FlightData => ({
-    id: crypto.randomUUID(), falconName: '', falconerName: '', tiempoCortesia: 0, tiempoVuelo: 0, velocidadPicado: 0,
+    id: crypto.randomUUID(), falconName: '', falconerName: '', tiempoCortesia: 0, tiempoVuelo: 0, duracionTotalVuelo: 0, velocidadPicado: 0,
     alturaServicio: 0, distanciaServicio: 0, capturaType: null, 'bon recogida': 0, penPicado: 0,
     penSenueloEncarnado: false, penEnsenarSenuelo: false, penSueltaObligada: false,
     disqualifications: { superar10min: false, ensenarVivos: false, conductaAntideportiva: false, noComparecer: false },
@@ -249,8 +258,8 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                 <Gavel className="w-7 h-7 text-field-green" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-falcon-brown uppercase tracking-tight leading-none">Jurado</h2>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">v{APP_VERSION} PRO</p>
+                <h2 className="text-2xl font-black text-falcon-brown uppercase tracking-tight leading-none">Cuerpo Arbitral</h2>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">v{APP_VERSION}</p>
               </div>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">

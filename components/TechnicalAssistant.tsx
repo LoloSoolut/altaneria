@@ -1,8 +1,8 @@
-
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { saveChatHistory } from '../supabase.ts';
 import { MessageSquare, Send, Bot, User, Loader2, Sparkles, ScrollText, Scale, ShieldAlert } from 'lucide-react';
+import { APP_VERSION } from '../constants.ts';
 
 const TechnicalAssistant: React.FC = () => {
   const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([]);
@@ -22,24 +22,25 @@ const TechnicalAssistant: React.FC = () => {
   const systemInstruction = `Eres el "Asistente Técnico del Gabinete de Jueces" para COMPETICIONES DE ALTANERÍA PARA PROFESIONALES. 
   Tu función es resolver dudas REGLAMENTARIAS de forma tajante, técnica y profesional.
 
-  REGLAMENTO TÉCNICO VIGENTE (v1.3.3):
+  REGLAMENTO TÉCNICO VIGENTE (v${APP_VERSION}):
   1. ALTURA: 0.1 puntos por cada metro de altura de servicio.
   2. POSICIÓN (SERVICIO): Puntuación máxima 15 pts hasta 30m. Disminuye progresivamente hasta 0 pts a los 160m.
   3. VELOCIDAD PICADO: Base 100km/h (0 pts). +1 punto por cada 10 km/h adicionales.
-  4. VALORACIÓN PICADO (NUEVA): El juez puede penalizar de -0.5 a -5 puntos por falta de agresividad, calidad o estilo en el picado.
-  5. REMONTADA: (Altura / Tiempo de vuelo en seg) * 60. Se puntúa si supera 20 m/min.
+  4. VALORACIÓN PICADO: El juez puede penalizar de -0.5 a -5 puntos por falta de agresividad, calidad o estilo en el picado.
+  5. REMONTADA: (Altura / Tiempo de Remontada en seg) * 60. Se puntúa si supera 20 m/min.
   6. CAPTURA: 
      - Limpia o Trabando: Altura / 12
      - Persecución Corta: Altura / 15
      - Persecución Larga: Altura / 18
      - Acuchilla: Altura / 40
      - Toca/Rinde: Altura / 50
-  7. BONOS DE TIEMPO: 
-     - < 5 min: +6 pts
-     - 5:00 a 5:59: +4 pts
-     - 6:00 a 6:59: +2 pts
-  8. PENALIZACIONES FIJAS: Señuelo encarnado (-4), Enseñar señuelo (-6), Suelta obligada (-10).
-  9. DESCALIFICACIONES: Superar 10 min sin recoger, enseñar vivos, conducta antideportiva o no comparecer (2 avisos + 1 min).
+  7. BONOS DE TIEMPO (ACTUALIZADO): 
+     - Hasta 7:00 min: +6 pts
+     - De 7:01 min a 8:00 min: +4 pts
+     - De 8:01 min a 9:00 min: +2 pts
+     - De 9:01 min en adelante: 0 pts
+  8. PENALIZACIONES FIJAS: Señuelo encarnado (+ 1/3 paloma) (-4), Enseñar señuelo (-6), Suelta obligada (-10).
+  9. DESCALIFICACIONES: Superar 10 min sin recoger persecución, enseñar vivos, conducta antideportiva o no comparecer.
 
   Instrucciones de Respuesta:
   - Usa terminología cetrera (techos, servicio, trabar, acuchillar).
@@ -121,7 +122,7 @@ const TechnicalAssistant: React.FC = () => {
             </div>
             <div className="flex flex-wrap justify-center gap-2 px-4">
               <QuickQuery text="¿Picado Juez?" onClick={() => { setInput("¿Cómo funciona la valoración del juez en el picado?"); }} />
-              <QuickQuery text="¿Bono Tiempo?" onClick={() => { setInput("¿Cuáles son los tramos de bonificación por tiempo?"); }} />
+              <QuickQuery text="¿Bono Tiempo?" onClick={() => { setInput("¿Cuáles son los tramos de bonificación por tiempo actualizados?"); }} />
               <QuickQuery text="¿Descalificar?" onClick={() => { setInput("Causas de descalificación directa"); }} />
             </div>
           </div>

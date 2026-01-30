@@ -1,8 +1,7 @@
-
 import { CapturaType } from './types.ts';
 
 // Centralized version constant to avoid scope errors across components
-export const APP_VERSION = "1.3.4";
+export const APP_VERSION = "1.5.1";
 
 export const SCORING = {
   // 0.1 points per meter
@@ -49,10 +48,10 @@ export const SCORING = {
 
   calculateTimeBonus: (seconds: number) => {
     if (seconds <= 0) return 0;
-    if (seconds <= 299) return 6; // Inferior a 4:59 (299s)
-    if (seconds <= 359) return 4; // Entre 5:00 y 5:59 (300-359s)
-    if (seconds <= 419) return 2; // Entre 6:00 y 6:59 (360-419s)
-    return 0; // 7:00 o superior
+    if (seconds <= 420) return 6; // Hasta 7:00 min (420s)
+    if (seconds <= 480) return 4; // De 7:01 a 8:00 min (421s - 480s)
+    if (seconds <= 540) return 2; // De 8:01 a 9:00 min (481s - 540s)
+    return 0; // De 9:01 en adelante (> 540s)
   }
 };
 

@@ -1,10 +1,10 @@
-
 export interface FlightData {
   id: string;
   falconName: string;
   falconerName: string;
   tiempoCortesia: number; // seconds
-  tiempoVuelo: number; // seconds
+  tiempoVuelo: number; // seconds (Label changed to "Tiempo de Remontada")
+  duracionTotalVuelo: number; // seconds (New field: manual input)
   velocidadPicado: number; // km/h
   alturaServicio: number; // meters
   distanciaServicio: number; // meters
@@ -41,6 +41,7 @@ export interface Championship {
   participants: FlightData[];
   isPublic: boolean;
   createdAt: number;
+  publishedAt?: number;
 }
 
 export interface AppState {

@@ -135,8 +135,8 @@ const App: React.FC = () => {
               <Trophy className="w-10 h-10 text-field-green" />
             </div>
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight leading-none uppercase">
-                COMPETICIONES DE ALTANERÍA
+              <h1 className="text-xl md:text-2xl lg:text-3xl font-bold tracking-tight leading-none uppercase">
+                COMPETICIONES DE ALTANERÍA PARA PROFESIONALES
               </h1>
             </div>
           </div>
