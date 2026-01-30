@@ -39,9 +39,7 @@ const App: React.FC = () => {
           publicChampionshipId: publicChamp?.id || null
         });
         
-        // Si hay un campeonato público activo, mostramos la vista pública por defecto
         if (publicChamp) setView('public');
-        
         setLoading(false);
         return;
       }
@@ -60,7 +58,6 @@ const App: React.FC = () => {
             publicChampionshipId: publicChamp?.id || null
           });
           
-          // Si hay un campeonato público activo al iniciar, vamos directos a él
           if (publicChamp) {
             setView('public');
           }
@@ -161,7 +158,6 @@ const App: React.FC = () => {
       <main className="flex-grow container mx-auto px-4 py-12">
         {view === 'home' && (
           <div className="max-w-4xl mx-auto space-y-16 animate-in fade-in duration-1000">
-            {/* PORTADA CON EL GERIFALTE SELECCIONADO */}
             <div className="relative group overflow-hidden rounded-[40px] shadow-2xl bg-white border-8 border-white">
               <div className="relative h-[650px] overflow-hidden">
                 <img 

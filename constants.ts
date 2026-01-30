@@ -1,7 +1,7 @@
 import { CapturaType } from './types.ts';
 
 // Centralized version constant to avoid scope errors across components
-export const APP_VERSION = "1.5.2";
+export const APP_VERSION = "1.5.3";
 
 export const SCORING = {
   // 0.1 points per meter

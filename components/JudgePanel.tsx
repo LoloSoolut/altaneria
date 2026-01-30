@@ -18,9 +18,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 
-// Corrección de rutas: Aseguramos el uso de rutas relativas locales
 import FlightScoringForm from './FlightScoringForm.tsx';
-// Fix: Import APP_VERSION from constants
 import { SCORING, APP_VERSION } from '../constants.ts';
 
 interface Props {
@@ -37,88 +35,6 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
   const [lastError, setLastError] = useState<string | null>(null);
 
   const selectedChamp = state.championships.find(c => c.id === state.selectedChampionshipId);
-
-  const exportToPDF = () => {
-    if (!selectedChamp) return;
-    
-    // @ts-ignore
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('l', 'mm', 'a4');
-    
-    const primaryColor = [27, 94, 32]; 
-    
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, 297, 40, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(22);
-    doc.setFont('helvetica', 'bold');
-    doc.text('COMPETICIONES DE ALTANERÍA PARA PROFESIONALES', 15, 22);
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text('ACTA OFICIAL DE RESULTADOS TÉCNICOS Y CLASIFICACIÓN', 15, 31);
-    
-    doc.setTextColor(40, 40, 40);
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text(selectedChamp.name, 15, 55);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Ubicación: ${selectedChamp.location} | Fecha: ${selectedChamp.date}`, 15, 62);
-    doc.text(`Generado el ${new Date().toLocaleString()}`, 15, 67);
-
-    const sortedParticipants = [...selectedChamp.participants].sort((a, b) => b.totalPoints - a.totalPoints);
-    const tableData = sortedParticipants.map((p, i) => {
-      const turnBonus = SCORING.calculateTimeBonus(p.tiempoVuelo);
-      const penTotal = (p.penSenueloEncarnado ? 4 : 0) + 
-                       (p.penEnsenarSenuelo ? 6 : 0) + 
-                       (p.penSueltaObligada ? 10 : 0) + 
-                       (p.penPicado || 0);
-
-      const totalDuration = p.duracionTotalVuelo ? `${Math.floor(p.duracionTotalVuelo / 60)}m ${p.duracionTotalVuelo % 60}s` : '-';
-
-      return [
-        i + 1,
-        p.falconerName,
-        p.falconName,
-        `${p.alturaServicio}m`,
-        `${Math.floor(p.tiempoVuelo / 60)}m ${p.tiempoVuelo % 60}s`,
-        totalDuration,
-        `${p.tiempoCortesia}s`,
-        `${p.velocidadPicado}km/h`,
-        `${p.distanciaServicio}m`,
-        p['bon recogida'],
-        turnBonus,
-        penTotal > 0 ? `-${penTotal}` : '0',
-        { content: p.totalPoints.toFixed(2), styles: { fontStyle: 'bold', textColor: primaryColor, fontSize: 11 } }
-      ];
-    });
-
-    // @ts-ignore
-    doc.autoTable({
-      startY: 75,
-      head: [['Pos', 'Cetrero', 'Halcón', 'Alt(m)', 'T.Rem', 'T.Tot', 'T.Cort(s)', 'Picado', 'Dist(m)', 'B.Rec', 'B.Tie', 'Pen', 'TOTAL']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontSize: 8, halign: 'center', valign: 'middle' },
-      styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
-      columnStyles: {
-        1: { halign: 'left', cellWidth: 35 },
-        2: { halign: 'left', cellWidth: 30 },
-        12: { cellWidth: 20, fillColor: [245, 245, 245] }
-      }
-    });
-
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text('Este documento constituye el registro oficial de la competición. Cualquier alteración anula su validez.', 15, 200);
-      doc.text(`Acta Oficial v${APP_VERSION} | Página ${i} de ${pageCount}`, 250, 200);
-    }
-
-    doc.save(`${selectedChamp.name}.PDF`);
-  };
 
   const syncWithSupabase = async (championship: Championship) => {
     if (!supabase) return;
@@ -179,7 +95,14 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
     const updatedParticipants = isUpdate 
       ? selectedChamp.participants.map(p => p.id === data.id ? data : p)
       : [...selectedChamp.participants, data];
-    const updatedChamp = { ...selectedChamp, participants: updatedParticipants };
+    
+    const updatedChamp = { 
+      ...selectedChamp, 
+      participants: updatedParticipants,
+      // Asegurar que mantenemos el estado público actual en el guardado de vuelos
+      isPublic: state.publicChampionshipId === selectedChamp.id 
+    };
+    
     const updatedChamps = state.championships.map(c => c.id === selectedChamp.id ? updatedChamp : c);
     onUpdateState({ championships: updatedChamps });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
@@ -203,34 +126,93 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
     const newPublicId = isCurrentlyPublic ? null : id;
     const publicationTime = newPublicId ? Date.now() : undefined;
     
+    // 1. Actualización Local Inmediata
     const updatedChamps = state.championships.map(c => ({ 
       ...c, 
       isPublic: c.id === newPublicId,
-      publishedAt: c.id === newPublicId ? publicationTime : c.publishedAt
+      publishedAt: c.id === newPublicId ? publicationTime : (c.isPublic ? c.publishedAt : undefined)
     }));
 
     onUpdateState({ championships: updatedChamps, publicChampionshipId: newPublicId });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
 
+    // 2. Sincronización con Supabase (Persistencia Real)
     if (supabase) {
       setSyncing(true);
       try {
-        // Primero desactivamos todos los demás para asegurar que solo uno es público
+        // Desactivar todos primero (Operación atómica para visibilidad única)
         await supabase.from('championships').update({ isPublic: false }).neq('id', '00000000-0000-0000-0000-000000000000');
         
         if (newPublicId) {
-          // Activamos el seleccionado y grabamos la hora de publicación exacta
-          await supabase.from('championships').update({ 
+          // Activar el nuevo y grabar la hora oficial de publicación
+          const { error } = await supabase.from('championships').update({ 
             isPublic: true, 
             publishedAt: publicationTime 
           }).eq('id', newPublicId);
+          
+          if (error) throw error;
         }
       } catch (e) {
-        setLastError("Error actualizando visibilidad en la nube");
+        console.error("Error al publicar resultados:", e);
+        setLastError("Error de red al publicar resultados en vivo");
       } finally {
         setSyncing(false);
       }
     }
+  };
+
+  const exportToPDF = () => {
+    if (!selectedChamp) return;
+    // @ts-ignore
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const primaryColor = [27, 94, 32]; 
+    doc.setFillColor(...primaryColor);
+    doc.rect(0, 0, 297, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('COMPETICIONES DE ALTANERÍA PARA PROFESIONALES', 15, 22);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text('ACTA OFICIAL DE RESULTADOS TÉCNICOS Y CLASIFICACIÓN', 15, 31);
+    doc.setTextColor(40, 40, 40);
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.text(selectedChamp.name, 15, 55);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Ubicación: ${selectedChamp.location} | Fecha: ${selectedChamp.date}`, 15, 62);
+    doc.text(`Generado el ${new Date().toLocaleString()}`, 15, 67);
+
+    const sortedParticipants = [...selectedChamp.participants].sort((a, b) => b.totalPoints - a.totalPoints);
+    const tableData = sortedParticipants.map((p, i) => {
+      const turnBonus = SCORING.calculateTimeBonus(p.tiempoVuelo);
+      const penTotal = (p.penSenueloEncarnado ? 4 : 0) + 
+                       (p.penEnsenarSenuelo ? 6 : 0) + 
+                       (p.penSueltaObligada ? 10 : 0) + 
+                       (p.penPicado || 0);
+      const totalDuration = p.duracionTotalVuelo ? `${Math.floor(p.duracionTotalVuelo / 60)}m ${p.duracionTotalVuelo % 60}s` : '-';
+      return [
+        i + 1, p.falconerName, p.falconName, `${p.alturaServicio}m`,
+        `${Math.floor(p.tiempoVuelo / 60)}m ${p.tiempoVuelo % 60}s`, totalDuration,
+        `${p.tiempoCortesia}s`, `${p.velocidadPicado}km/h`, `${p.distanciaServicio}m`,
+        p['bon recogida'], turnBonus, penTotal > 0 ? `-${penTotal}` : '0',
+        { content: p.totalPoints.toFixed(2), styles: { fontStyle: 'bold', textColor: primaryColor, fontSize: 11 } }
+      ];
+    });
+
+    // @ts-ignore
+    doc.autoTable({
+      startY: 75,
+      head: [['Pos', 'Cetrero', 'Halcón', 'Alt(m)', 'T.Rem', 'T.Tot', 'T.Cort(s)', 'Picado', 'Dist(m)', 'B.Rec', 'B.Tie', 'Pen', 'TOTAL']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontSize: 8, halign: 'center', valign: 'middle' },
+      styles: { fontSize: 8, cellPadding: 2, halign: 'center' },
+      columnStyles: { 1: { halign: 'left', cellWidth: 35 }, 2: { halign: 'left', cellWidth: 30 }, 12: { cellWidth: 20, fillColor: [245, 245, 245] } }
+    });
+    doc.save(`${selectedChamp.name}.PDF`);
   };
 
   const emptyFlight = (): FlightData => ({
@@ -392,7 +374,6 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                       <button onClick={(e) => { e.stopPropagation(); deleteChamp(champ.id); }} className={`p-2 rounded-xl transition-all ${isSelected ? 'hover:bg-white/10 text-white opacity-40 hover:opacity-100' : 'text-red-200 hover:text-red-500 hover:bg-red-50'}`}><Trash2 className="w-4 h-4"/></button>
                     </div>
                     
-                    {/* Indicador de Publicación Grabada */}
                     {champ.publishedAt && (
                       <div className={`mb-3 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest ${isSelected ? 'text-white/60' : 'text-field-green/60'}`}>
                         <CheckCircle2 className="w-2.5 h-2.5" /> 
