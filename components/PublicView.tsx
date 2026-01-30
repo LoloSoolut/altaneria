@@ -235,7 +235,7 @@ const PublicView: React.FC<Props> = ({ state }) => {
                 <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <History className="w-4 h-4 text-gray-400" />
-                    <span className="text-[8px] font-black uppercase text-gray-500 tracking-wider">Duración Total (Manual)</span>
+                    <span className="text-[8px] font-black uppercase text-gray-500 tracking-wider">Duración total del Vuelo</span>
                   </div>
                   <span className="text-[10px] font-black text-gray-800">{formatTime(selectedFlight.duracionTotalVuelo)}</span>
                 </div>
