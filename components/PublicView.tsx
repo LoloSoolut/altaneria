@@ -28,7 +28,7 @@ const PublicView: React.FC<Props> = ({ state }) => {
         table: 'championships', 
         filter: `id=eq.${state.publicChampionshipId}` 
       }, (payload) => {
-          console.log("¡NUEVOS DATOS RECIBIDOS EN TIEM REAL!");
+          console.log("¡NUEVOS DATOS RECIBIDOS EN TIEMPO REAL!");
           setIsSyncing(true);
           setCurrentChamp(payload.new as Championship);
           setLastUpdate(new Date());
@@ -101,20 +101,20 @@ const PublicView: React.FC<Props> = ({ state }) => {
         </div>
       </div>
 
-      {/* Cuadro de Hora de Publicación */}
+      {/* Cuadro de Hora de Publicación Grabado en Base de Datos */}
       {currentChamp.publishedAt && (
-        <div className="mx-1 bg-white border-2 border-field-green/20 rounded-[28px] p-5 flex items-center justify-between shadow-sm animate-in zoom-in-95 duration-500">
+        <div className="mx-1 bg-white border-2 border-field-green/30 rounded-[28px] p-5 flex items-center justify-between shadow-lg shadow-green-900/5 animate-in zoom-in-95 duration-500">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-field-green/10 rounded-2xl flex items-center justify-center text-field-green shadow-inner">
+            <div className="w-12 h-12 bg-field-green rounded-2xl flex items-center justify-center text-white shadow-md">
               <Calendar className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 leading-none mb-1">Publicación Oficial</p>
-              <h3 className="text-sm font-black text-gray-800 uppercase tracking-tighter">Resultados Activos</h3>
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-field-green leading-none mb-1">Publicación Oficial</p>
+              <h3 className="text-sm font-black text-gray-800 uppercase tracking-tighter">Resultados Grabados</h3>
             </div>
           </div>
           <div className="text-right border-l pl-5 border-gray-100">
-            <p className="text-[8px] font-black text-field-green uppercase tracking-widest mb-0.5">Hora Publicación</p>
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Hora Publicación</p>
             <p className="text-xl font-black text-gray-900 tracking-tighter leading-none">
               {new Date(currentChamp.publishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </p>

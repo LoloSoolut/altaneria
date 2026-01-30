@@ -14,7 +14,8 @@ import {
   ScrollText, 
   Bird,
   Eye,
-  EyeOff
+  EyeOff,
+  CheckCircle2
 } from 'lucide-react';
 
 // Corrección de rutas: Aseguramos el uso de rutas relativas locales
@@ -214,9 +215,11 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
     if (supabase) {
       setSyncing(true);
       try {
+        // Primero desactivamos todos los demás para asegurar que solo uno es público
         await supabase.from('championships').update({ isPublic: false }).neq('id', '00000000-0000-0000-0000-000000000000');
+        
         if (newPublicId) {
-          const targetChamp = updatedChamps.find(c => c.id === newPublicId);
+          // Activamos el seleccionado y grabamos la hora de publicación exacta
           await supabase.from('championships').update({ 
             isPublic: true, 
             publishedAt: publicationTime 
@@ -388,6 +391,15 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
                       </div>
                       <button onClick={(e) => { e.stopPropagation(); deleteChamp(champ.id); }} className={`p-2 rounded-xl transition-all ${isSelected ? 'hover:bg-white/10 text-white opacity-40 hover:opacity-100' : 'text-red-200 hover:text-red-500 hover:bg-red-50'}`}><Trash2 className="w-4 h-4"/></button>
                     </div>
+                    
+                    {/* Indicador de Publicación Grabada */}
+                    {champ.publishedAt && (
+                      <div className={`mb-3 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest ${isSelected ? 'text-white/60' : 'text-field-green/60'}`}>
+                        <CheckCircle2 className="w-2.5 h-2.5" /> 
+                        Pub: {new Date(champ.publishedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      </div>
+                    )}
+
                     <button 
                       onClick={(e) => { e.stopPropagation(); togglePublic(champ.id); }} 
                       className={`w-full text-[9px] py-3.5 rounded-2xl border-2 uppercase font-black tracking-[0.2em] transition-all flex items-center justify-center gap-3 ${
