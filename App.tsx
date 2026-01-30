@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Championship, AppState } from './types.ts';
 import JudgePanel from './components/JudgePanel.tsx';
 import PublicView from './components/PublicView.tsx';
@@ -17,7 +17,7 @@ const App: React.FC = () => {
     publicChampionshipId: null
   });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!supabase) {
       setLoading(false);
       return;
@@ -33,19 +33,19 @@ const App: React.FC = () => {
         const publicChamp = championships.find(c => c.isPublic === true);
         
         setState(prev => ({
+          ...prev,
           championships,
+          // Mantenemos la selección actual si existe, sino cogemos el primero
           selectedChampionshipId: prev.selectedChampionshipId || (championships[0]?.id || null),
           publicChampionshipId: publicChamp?.id || null
         }));
-        
-        console.log("📡 Datos Sincronizados. Público ID:", publicChamp?.id || 'Ninguno');
       }
     } catch (e) {
       console.error("Error en fetchData:", e);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -59,7 +59,7 @@ const App: React.FC = () => {
     return () => {
       if (channel) supabase?.removeChannel(channel);
     };
-  }, []);
+  }, [fetchData]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +69,10 @@ const App: React.FC = () => {
     } else {
       alert('Clave incorrecta');
     }
+  };
+
+  const updateState = (newState: Partial<AppState>) => {
+    setState(prev => ({ ...prev, ...newState }));
   };
 
   if (loading) {
@@ -222,7 +226,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {view === 'judge' && isAuth && <JudgePanel state={state} onUpdateState={(ns) => setState(prev => ({...prev, ...ns}))} />}
+        {view === 'judge' && isAuth && <JudgePanel state={state} onUpdateState={updateState} />}
         {view === 'public' && <PublicView state={state} />}
       </main>
 
