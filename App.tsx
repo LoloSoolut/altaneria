@@ -4,7 +4,6 @@ import JudgePanel from './components/JudgePanel.tsx';
 import PublicView from './components/PublicView.tsx';
 import { supabase } from './supabase.ts';
 import { Trophy, Gavel, Users, ShieldCheck, Loader2, AlertCircle, Bird, Radio } from 'lucide-react';
-// Fix: Import APP_VERSION from centralized constants to avoid scope errors
 import { APP_VERSION } from './constants.ts';
 
 const App: React.FC = () => {
@@ -19,27 +18,10 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    const savedVersion = localStorage.getItem('altaneria_app_version');
-    if (savedVersion !== APP_VERSION) {
-      console.warn(`SISTEMA ACTUALIZADO A v${APP_VERSION}. Sincronizando reglamento técnico...`);
-      localStorage.setItem('altaneria_app_version', APP_VERSION);
-    }
+    localStorage.setItem('altaneria_app_version', APP_VERSION);
 
     const fetchData = async () => {
-      setLoading(true);
-      
       if (!supabase) {
-        const saved = localStorage.getItem('altaneria_championships');
-        const championships = saved ? JSON.parse(saved) : [];
-        const publicChamp = championships.find((c: any) => c.isPublic);
-        
-        setState({
-          championships,
-          selectedChampionshipId: championships[0]?.id || null,
-          publicChampionshipId: publicChamp?.id || null
-        });
-        
-        if (publicChamp) setView('public');
         setLoading(false);
         return;
       }
@@ -51,19 +33,21 @@ const App: React.FC = () => {
           .order('createdAt', { ascending: false });
 
         if (!error && championships) {
-          const publicChamp = championships.find(c => c.isPublic);
-          setState({
-            championships,
-            selectedChampionshipId: championships[0]?.id || null,
-            publicChampionshipId: publicChamp?.id || null
-          });
+          const publicChamp = championships.find(c => c.isPublic === true);
           
-          if (publicChamp) {
-            setView('public');
+          setState(prev => ({
+            championships,
+            selectedChampionshipId: prev.selectedChampionshipId || (championships[0]?.id || null),
+            publicChampionshipId: publicChamp?.id || null
+          }));
+          
+          // Solo cambiamos a vista pública si es la carga inicial y hay uno público
+          if (loading && publicChamp) {
+             setView('public');
           }
         }
       } catch (e) {
-        console.error("Error fetching from Supabase:", e);
+        console.error("Error al obtener datos:", e);
       } finally {
         setLoading(false);
       }
@@ -71,20 +55,16 @@ const App: React.FC = () => {
 
     fetchData();
 
-    if (supabase) {
-      const channel = supabase
-        .channel('schema-db-changes')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'championships' },
-          () => fetchData()
-        )
-        .subscribe();
+    // Suscripción a cambios de cualquier tabla para mantener sincronización perfecta
+    const channel = supabase?.channel('global-sync')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'championships' }, () => {
+        fetchData();
+      })
+      .subscribe();
 
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
+    return () => {
+      if (channel) supabase?.removeChannel(channel);
+    };
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -122,7 +102,7 @@ const App: React.FC = () => {
       {!supabase && (
         <div className="bg-red-900 text-white px-4 py-1.5 text-[10px] flex items-center justify-center gap-2 uppercase font-black tracking-widest">
           <AlertCircle className="w-3 h-3" />
-          <span>SISTEMA EN MODO LOCAL (Los datos no se sincronizarán con otros dispositivos)</span>
+          <span>SISTEMA EN MODO LOCAL</span>
         </div>
       )}
       <header className="bg-field-green text-white py-8 shadow-2xl border-b-[6px] border-falcon-brown sticky top-0 z-50">
@@ -170,25 +150,25 @@ const App: React.FC = () => {
                     {state.publicChampionshipId ? (
                       <div className="flex items-center gap-3 self-start">
                         <span className="text-white bg-red-600 px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.25em] shadow-xl flex items-center gap-2">
-                          <Radio className="w-3 h-3 animate-pulse" /> Competición en Directo {activePublicChampName && `- ${activePublicChampName}`}
+                          <Radio className="w-3 h-3 animate-pulse" /> Directo {activePublicChampName && `: ${activePublicChampName}`}
                         </span>
                       </div>
                     ) : (
                       <span className="text-field-green bg-white/95 backdrop-blur-sm self-start px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.25em] shadow-xl">
-                        Élite de la Cetrería
+                        Elite Cetrería
                       </span>
                     )}
                   </div>
                   <h2 className="text-white text-4xl md:text-7xl font-black mb-4 tracking-tighter uppercase drop-shadow-2xl max-w-2xl">
-                    Competiciones de Altanería
+                    Competiciones Altanería
                   </h2>
                   <p className="text-white/90 text-xl font-light max-w-2xl italic border-l-4 border-field-green pl-6 bg-black/40 p-6 rounded-r-3xl backdrop-blur-xl">
-                    "Rigurosidad técnica y pasión por el vuelo. El estándar profesional para el registro de actas de vuelo y clasificación en tiempo real."
+                    "Rigurosidad técnica y pasión. El estándar profesional para el registro oficial."
                   </p>
                   
                   {state.publicChampionshipId && (
                     <button onClick={() => setView('public')} className="mt-8 bg-field-green text-white px-8 py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center gap-3 self-start hover:bg-green-700 transition-all shadow-2xl shadow-green-900/40 active:scale-95 group">
-                      Acceder a Resultados en Vivo <Users className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      Acceder a Resultados <Users className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </button>
                   )}
                 </div>
@@ -209,14 +189,14 @@ const App: React.FC = () => {
                   <Users className="w-10 h-10 text-field-green" />
                 </div>
                 <h3 className="text-3xl font-black mb-4 text-gray-800 uppercase tracking-tighter">Resultados Públicos</h3>
-                <p className="text-gray-500 text-lg leading-relaxed">Acceso a la clasificación oficial en tiempo real, desgloses técnicos y actas de vuelo para el seguimiento de la competición.</p>
+                <p className="text-gray-500 text-lg leading-relaxed">Clasificación oficial en tiempo real, desgloses técnicos y actas de vuelo.</p>
               </div>
               <div className="bg-white p-12 rounded-[40px] shadow-professional border border-gray-100 hover:border-falcon-brown transition-all duration-500 cursor-pointer group" onClick={() => setView('judge')}>
                 <div className="w-20 h-20 bg-orange-50 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
                   <ShieldCheck className="w-10 h-10 text-falcon-brown" />
                 </div>
                 <h3 className="text-3xl font-black mb-4 text-gray-800 uppercase tracking-tighter">Área de Jueces</h3>
-                <p className="text-gray-500 text-lg leading-relaxed">Portal restringido para el cuerpo arbitral. Gestión de puntuaciones, penalizaciones y descalificaciones directas reglamentarias.</p>
+                <p className="text-gray-500 text-lg leading-relaxed">Portal restringido para el cuerpo arbitral. Gestión de puntuaciones y penalizaciones.</p>
               </div>
             </div>
           </div>

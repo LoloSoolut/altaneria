@@ -36,11 +36,17 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
 
   const selectedChamp = state.championships.find(c => c.id === state.selectedChampionshipId);
 
-  const syncWithSupabase = async (championship: Championship) => {
+  // Sincronización robusta que respeta el estado público global
+  const syncWithSupabase = async (championship: Championship, forcePublicStatus?: boolean) => {
     if (!supabase) return;
     setSyncing(true);
     setLastError(null);
     try {
+      // Si forcePublicStatus está definido, lo usamos; si no, miramos el estado global
+      const finalPublicStatus = forcePublicStatus !== undefined 
+        ? forcePublicStatus 
+        : state.publicChampionshipId === championship.id;
+
       const { error } = await supabase
         .from('championships')
         .upsert({
@@ -49,14 +55,14 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
           date: championship.date,
           location: championship.location,
           participants: championship.participants,
-          isPublic: championship.isPublic,
+          isPublic: finalPublicStatus,
           createdAt: championship.createdAt,
           publishedAt: championship.publishedAt
         }, { onConflict: 'id' });
 
       if (error) setLastError(error.message);
     } catch (e) {
-      setLastError("Error de sincronización de red");
+      setLastError("Error de red");
     } finally {
       setSyncing(false);
     }
@@ -76,15 +82,18 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
     const updatedChamps = [champ, ...state.championships];
     onUpdateState({ championships: updatedChamps, selectedChampionshipId: champ.id });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
-    await syncWithSupabase(champ);
+    await syncWithSupabase(champ, false);
     setIsCreating(false);
     setNewChamp({ name: '', date: '', location: '' });
   };
 
   const deleteChamp = async (id: string) => {
-    if (!confirm('¿Seguro que desea eliminar permanentemente este campeonato y sus registros?')) return;
+    if (!confirm('¿Seguro que desea eliminar este campeonato?')) return;
     const updatedChamps = state.championships.filter(c => c.id !== id);
-    onUpdateState({ championships: updatedChamps });
+    onUpdateState({ 
+      championships: updatedChamps, 
+      publicChampionshipId: state.publicChampionshipId === id ? null : state.publicChampionshipId 
+    });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
     if (supabase) await supabase.from('championships').delete().eq('id', id);
     if (state.selectedChampionshipId === id) onUpdateState({ selectedChampionshipId: null });
@@ -96,23 +105,22 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
       ? selectedChamp.participants.map(p => p.id === data.id ? data : p)
       : [...selectedChamp.participants, data];
     
-    const updatedChamp = { 
-      ...selectedChamp, 
-      participants: updatedParticipants,
-      // Asegurar que mantenemos el estado público actual en el guardado de vuelos
-      isPublic: state.publicChampionshipId === selectedChamp.id 
-    };
-    
+    const updatedChamp = { ...selectedChamp, participants: updatedParticipants };
     const updatedChamps = state.championships.map(c => c.id === selectedChamp.id ? updatedChamp : c);
+    
+    // Actualización local
     onUpdateState({ championships: updatedChamps });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
-    await syncWithSupabase(updatedChamp);
+    
+    // Sincronización forzando el estado público actual del estado global
+    await syncWithSupabase(updatedChamp, state.publicChampionshipId === selectedChamp.id);
+    
     setIsAddingParticipant(false);
     setEditingFlightId(null);
   };
 
   const deleteParticipant = async (participantId: string) => {
-    if (!selectedChamp || !confirm('¿Eliminar registro de vuelo de forma permanente?')) return;
+    if (!selectedChamp || !confirm('¿Eliminar registro?')) return;
     const updatedParticipants = selectedChamp.participants.filter(p => p.id !== participantId);
     const updatedChamp = { ...selectedChamp, participants: updatedParticipants };
     const updatedChamps = state.championships.map(c => c.id === selectedChamp.id ? updatedChamp : c);
@@ -130,31 +138,29 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
     const updatedChamps = state.championships.map(c => ({ 
       ...c, 
       isPublic: c.id === newPublicId,
-      publishedAt: c.id === newPublicId ? publicationTime : (c.isPublic ? c.publishedAt : undefined)
+      publishedAt: c.id === newPublicId ? publicationTime : (c.id === state.publicChampionshipId ? c.publishedAt : c.publishedAt)
     }));
 
     onUpdateState({ championships: updatedChamps, publicChampionshipId: newPublicId });
     localStorage.setItem('altaneria_championships', JSON.stringify(updatedChamps));
 
-    // 2. Sincronización con Supabase (Persistencia Real)
+    // 2. Sincronización Atómica con Supabase
     if (supabase) {
       setSyncing(true);
       try {
-        // Desactivar todos primero (Operación atómica para visibilidad única)
+        // RESET TOTAL: Desactivamos la propiedad isPublic de todos los registros
         await supabase.from('championships').update({ isPublic: false }).neq('id', '00000000-0000-0000-0000-000000000000');
         
         if (newPublicId) {
-          // Activar el nuevo y grabar la hora oficial de publicación
+          // ACTIVACIÓN ÚNICA: Marcamos el elegido y su hora de publicación
           const { error } = await supabase.from('championships').update({ 
             isPublic: true, 
             publishedAt: publicationTime 
           }).eq('id', newPublicId);
-          
           if (error) throw error;
         }
       } catch (e) {
-        console.error("Error al publicar resultados:", e);
-        setLastError("Error de red al publicar resultados en vivo");
+        setLastError("Fallo al publicar en la nube");
       } finally {
         setSyncing(false);
       }
