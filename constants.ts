@@ -1,7 +1,7 @@
 import { CapturaType } from './types.ts';
 
-// Versión corregida para persistencia de estado público
-export const APP_VERSION = "1.5.4";
+// Versión blindada para sincronización Supabase
+export const APP_VERSION = "1.5.5";
 
 export const SCORING = {
   calculateAlturaPoints: (meters: number) => meters * 0.1,
