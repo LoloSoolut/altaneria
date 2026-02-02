@@ -126,7 +126,7 @@ const PublicView: React.FC<Props> = ({ state }) => {
       
       <button 
         onClick={handleManualRefresh}
-        className="fixed bottom-8 right-6 w-14 h-14 bg-field-green text-white rounded-2xl shadow-2xl flex items-center justify-center hover:bg-green-700 active:scale-95 transition-all z-[90] border-2 border-white/20 group"
+        className="fixed bottom-28 right-6 w-14 h-14 bg-field-green text-white rounded-2xl shadow-2xl flex items-center justify-center hover:bg-green-700 active:scale-95 transition-all z-[90] border-2 border-white/20 group"
         title="Actualizar Clasificación"
       >
         <RefreshCw className={`w-6 h-6 transition-transform duration-500 group-hover:rotate-180 ${isSyncing ? 'animate-spin' : ''}`} />
