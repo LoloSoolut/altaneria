@@ -68,8 +68,9 @@ const App: React.FC = () => {
         setState(prev => ({
           ...prev,
           championships: correctedChampionships,
-          // CAMBIO: Priorizar el ID público si prev.selectedChampionshipId es null
-          selectedChampionshipId: prev.selectedChampionshipId || finalPublicId || (correctedChampionships[0]?.id || null),
+          // MODIFICACIÓN: Si no hay selección previa, cargar el PUBLICO. 
+          // Si no hay PUBLICO, dejar en NULL (no cargar el primero de la lista).
+          selectedChampionshipId: prev.selectedChampionshipId || finalPublicId,
           publicChampionshipId: finalPublicId
         }));
       }
