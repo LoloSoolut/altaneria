@@ -1,16 +1,17 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { saveChatHistory } from '../supabase.ts';
-import { MessageSquare, Send, Bot, User, Loader2, Sparkles, ScrollText, Scale, ShieldAlert } from 'lucide-react';
+import { MessageSquare, Send, Bot, User, Loader2, Sparkles, ScrollText, Scale, ShieldAlert, Key, AlertCircle } from 'lucide-react';
 import { APP_VERSION } from '../constants.ts';
 
 const TechnicalAssistant: React.FC = () => {
   const [messages, setMessages] = useState<{ role: 'user' | 'ai', text: string }[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [needsKey, setNeedsKey] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   
-  // Referencia para mantener la instancia del chat y su historial
   const chatInstance = useRef<any>(null);
 
   useEffect(() => {
@@ -18,6 +19,26 @@ const TechnicalAssistant: React.FC = () => {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  // Verificar si hay una clave seleccionada al montar el componente
+  useEffect(() => {
+    const checkKey = async () => {
+      if (window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        setNeedsKey(!hasKey);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleOpenKeySelector = async () => {
+    if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+      await window.aistudio.openSelectKey();
+      setNeedsKey(false);
+      // Forzar reinicio del chat con la nueva clave
+      chatInstance.current = null;
+    }
+  };
 
   const systemInstruction = `Eres el "Asistente Técnico del Gabinete de Jueces" para COMPETICIONES DE ALTANERÍA PARA PROFESIONALES. 
   Tu función es resolver dudas REGLAMENTARIAS de forma tajante, técnica y profesional.
@@ -34,34 +55,36 @@ const TechnicalAssistant: React.FC = () => {
      - Persecución Larga: Altura / 18
      - Acuchilla: Altura / 40
      - Toca/Rinde: Altura / 50
-  7. BONOS DE TIEMPO (ACTUALIZADO): 
+  7. BONOS DE TIEMPO: 
      - Hasta 7:00 min: +6 pts
      - De 7:01 min a 8:00 min: +4 pts
      - De 8:01 min a 9:00 min: +2 pts
      - De 9:01 min en adelante: 0 pts
-  8. PENALIZACIONES FIJAS: Señuelo encarnado (+ 1/3 paloma) (-4), Enseñar señuelo (-6), Suelta obligada (-10).
-  9. DESCALIFICACIONES: Superar 10 min sin recoger persecución, enseñar vivos, conducta antideportiva o no comparecer.
+  8. PENALIZACIONES FIJAS: Señuelo encarnado (-4), Enseñar señuelo (-6), Suelta obligada (-10).
+  9. DESCALIFICACIONES: Superar 10 min sin recoger, enseñar vivos, conducta antideportiva.
 
   Instrucciones de Respuesta:
   - Usa terminología cetrera (techos, servicio, trabar, acuchillar).
-  - Sé conciso. No saludes en cada respuesta, ve directo al dato reglamentario.
+  - Sé conciso. No saludes, ve directo al dato.
   - Si no estás seguro, cita: "Remitirse al comité técnico de la federación".`;
 
   const handleSend = async () => {
     if (!input.trim() || isTyping) return;
 
     const userMsg = input.trim();
+    const apiKey = process.env.API_KEY;
+
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
     setIsTyping(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      // Creamos la instancia justo antes de usarla para asegurar que usa la clave actual
+      const ai = new GoogleGenAI({ apiKey: apiKey });
       
-      // Inicializar chat si no existe
       if (!chatInstance.current) {
         chatInstance.current = ai.chats.create({
-          model: 'gemini-3-pro-preview',
+          model: 'gemini-3-flash-preview', // Cambiado a Flash para mejor estabilidad en producción
           config: {
             systemInstruction: systemInstruction,
           },
@@ -72,15 +95,20 @@ const TechnicalAssistant: React.FC = () => {
       const aiText = response.text || 'Sin respuesta oficial registrada.';
       
       setMessages(prev => [...prev, { role: 'ai', text: aiText }]);
-      
-      // Persistencia en Supabase
       await saveChatHistory('juez_oficial', userMsg, aiText);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error IA:', error);
-      // Reset chat instance on fatal error to allow retry
-      chatInstance.current = null;
-      setMessages(prev => [...prev, { role: 'ai', text: 'ERROR DE CONEXIÓN: El gabinete técnico no puede responder. Reinicie la consulta.' }]);
+      chatInstance.current = null; // Reset para el próximo intento
+      
+      let errorMsg = 'ERROR DE CONEXIÓN: El gabinete técnico no responde.';
+      
+      if (error.message?.includes('Requested entity was not found') || error.message?.includes('API key')) {
+        errorMsg = 'ERROR DE CREDENCIALES: Se requiere vincular una API Key de Google Cloud con facturación activa para operar en producción.';
+        setNeedsKey(true);
+      }
+
+      setMessages(prev => [...prev, { role: 'ai', text: errorMsg }]);
     } finally {
       setIsTyping(false);
     }
@@ -96,7 +124,7 @@ const TechnicalAssistant: React.FC = () => {
   );
 
   return (
-    <div className="bg-white rounded-[32px] shadow-professional border border-gray-100 flex flex-col h-[580px] overflow-hidden border-t-4 border-t-field-green">
+    <div className="bg-white rounded-[32px] shadow-professional border border-gray-100 flex flex-col h-[600px] overflow-hidden border-t-4 border-t-field-green relative">
       <div className="p-5 border-b bg-white flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-field-green rounded-xl flex items-center justify-center text-white shadow-lg shadow-green-900/20">
@@ -105,24 +133,48 @@ const TechnicalAssistant: React.FC = () => {
           <div>
             <h3 className="font-black text-xs tracking-wider uppercase text-gray-800">Gabinete Consultivo</h3>
             <p className="text-[9px] font-bold text-field-green uppercase tracking-widest flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Sistema IA Activo
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Sistema IA v{APP_VERSION}
             </p>
           </div>
         </div>
-        <Sparkles className="w-4 h-4 text-field-green/30" />
+        <button 
+          onClick={handleOpenKeySelector}
+          className={`p-2 rounded-xl transition-all ${needsKey ? 'bg-red-50 text-red-600 animate-bounce' : 'text-gray-300 hover:bg-gray-50'}`}
+          title="Configurar API Key"
+        >
+          <Key className="w-4 h-4" />
+        </button>
       </div>
+
+      {needsKey && (
+        <div className="absolute top-20 left-4 right-4 z-20 bg-red-600 text-white p-4 rounded-2xl shadow-2xl animate-in zoom-in-95">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest mb-1">Requiere Configuración</p>
+              <p className="text-[9px] font-medium leading-relaxed mb-3">Para usar la IA en modo profesional/explotación, debe vincular su propia clave de Google Cloud con facturación habilitada.</p>
+              <button 
+                onClick={handleOpenKeySelector}
+                className="bg-white text-red-600 px-4 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm active:scale-95 transition-all"
+              >
+                Vincular Clave Cloud
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div ref={scrollRef} className="flex-grow p-5 overflow-y-auto space-y-4 bg-gray-50/50 custom-scrollbar">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center space-y-6 opacity-40">
             <Bot className="w-12 h-12 text-gray-300" />
             <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Reglamento Técnico Profesional</p>
-              <p className="text-xs text-gray-400 max-w-[200px] leading-relaxed italic">Consulte cualquier duda sobre penalizaciones por picado, bonos o descalificaciones.</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Gabinete Técnico IA</p>
+              <p className="text-xs text-gray-400 max-w-[200px] leading-relaxed italic">Resolución inmediata de dudas sobre el reglamento oficial de altanería.</p>
             </div>
             <div className="flex flex-wrap justify-center gap-2 px-4">
-              <QuickQuery text="¿Picado Juez?" onClick={() => { setInput("¿Cómo funciona la valoración del juez en el picado?"); }} />
-              <QuickQuery text="¿Bono Tiempo?" onClick={() => { setInput("¿Cuáles son los tramos de bonificación por tiempo actualizados?"); }} />
+              <QuickQuery text="¿Bono Tiempo?" onClick={() => { setInput("¿Cuáles son los tramos de bonificación por tiempo?"); }} />
+              <QuickQuery text="¿Captura?" onClick={() => { setInput("Diferencia de puntos entre Trabar y Acuchillar"); }} />
               <QuickQuery text="¿Descalificar?" onClick={() => { setInput("Causas de descalificación directa"); }} />
             </div>
           </div>
@@ -150,30 +202,36 @@ const TechnicalAssistant: React.FC = () => {
                 <span className="w-1.5 h-1.5 bg-field-green rounded-full animate-bounce delay-75"></span>
                 <span className="w-1.5 h-1.5 bg-field-green rounded-full animate-bounce delay-150"></span>
               </div>
-              <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Verificando Reglamento...</span>
+              <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">Consultando Reglamento...</span>
             </div>
           </div>
         )}
       </div>
 
-      <div className="p-5 bg-white border-t border-gray-100 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.03)]">
+      <div className="p-5 bg-white border-t border-gray-100">
         <div className="flex gap-2">
           <input 
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSend()}
-            placeholder="Consulte al experto técnico..."
-            className="flex-grow px-5 py-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-field-green/20 border-2 border-transparent focus:border-field-green/10 transition text-sm font-medium"
+            placeholder={needsKey ? "Vincule su clave para preguntar..." : "Consulte al experto técnico..."}
+            disabled={needsKey}
+            className="flex-grow px-5 py-4 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-field-green/20 border-2 border-transparent focus:border-field-green/10 transition text-sm font-medium disabled:opacity-50"
           />
           <button 
             onClick={handleSend}
-            disabled={isTyping}
+            disabled={isTyping || needsKey}
             className="w-14 h-14 bg-field-green text-white rounded-2xl hover:bg-green-800 transition-all disabled:opacity-50 shadow-lg shadow-green-900/20 flex items-center justify-center active:scale-95"
           >
             <Send className="w-5 h-5" />
           </button>
         </div>
+        {needsKey && (
+          <p className="text-[8px] text-red-500 font-black uppercase tracking-widest text-center mt-3 cursor-pointer" onClick={handleOpenKeySelector}>
+            Haga clic en el icono de llave para configurar la API KEY
+          </p>
+        )}
       </div>
     </div>
   );
