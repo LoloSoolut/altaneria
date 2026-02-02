@@ -16,7 +16,8 @@ import {
   Clock, 
   AlertTriangle,
   Gavel,
-  History
+  History,
+  TrendingUp
 } from 'lucide-react';
 
 interface Props {
@@ -106,19 +107,19 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
       {/* 2. Métricas de Campo */}
       <section className="bg-gray-50 p-4 md:p-6 rounded-3xl border border-gray-100 shadow-inner">
         <h4 className="font-bold text-[10px] uppercase tracking-widest text-gray-400 mb-4 flex items-center gap-2 border-b border-gray-200 pb-2">Métricas de Vuelo</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
           <div className="space-y-1">
             <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><ArrowUp className="w-3 h-3"/> Altura (m)</label>
             <input type="number" value={formData.alturaServicio || ''} onChange={e => setFormData({...formData, alturaServicio: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-xl font-bold text-base md:text-lg focus:ring-2 focus:ring-field-green outline-none" />
             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">+{alturaPts.toFixed(2)} pts</p>
           </div>
+          
           <div className="space-y-1">
             <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><Zap className="w-3 h-3"/> Picado (km/h)</label>
             <input type="number" value={formData.velocidadPicado || ''} onChange={e => setFormData({...formData, velocidadPicado: Number(e.target.value)})} className="w-full px-4 py-2 border rounded-xl font-bold text-base md:text-lg focus:ring-2 focus:ring-field-green outline-none" />
             <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">+{picadoPts.toFixed(2)} pts</p>
           </div>
           
-          {/* TIEMPO DE REMONTADA - Min y Sg */}
           <div className="space-y-1">
             <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-field-green mb-1"><Timer className="w-3 h-3"/> T. Remontada</label>
             <div className="flex items-center gap-1">
@@ -145,8 +146,19 @@ const FlightScoringForm: React.FC<Props> = ({ flight, onSave, onCancel }) => {
                 <span className="absolute -bottom-4 left-0 right-0 text-[7px] text-center font-black uppercase text-gray-300">Sg</span>
               </div>
             </div>
-            {/* Espaciador inferior para alineación */}
             <div className="h-4"></div>
+          </div>
+
+          {/* NUEVO: TASA DE REMONTADA (SOLO LECTURA) */}
+          <div className="space-y-1">
+            <label className="flex items-center gap-1.5 text-[10px] uppercase font-black text-falcon-brown mb-1">
+              <TrendingUp className="w-3 h-3"/> Tasa Remontada
+            </label>
+            <div className="w-full px-4 py-2 border-2 border-dashed border-gray-200 rounded-xl font-bold text-base md:text-lg bg-gray-100 text-gray-500 cursor-not-allowed flex items-center justify-between shadow-inner">
+              <span>{remontadaVal.toFixed(1)}</span>
+              <span className="text-[8px] font-black uppercase opacity-60">m/min</span>
+            </div>
+            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">+{remontadaPts.toFixed(2)} pts</p>
           </div>
 
           <div className="space-y-1">

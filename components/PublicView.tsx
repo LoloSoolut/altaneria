@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppState, FlightData, Championship } from '../types.ts';
-import { Trophy, Search, X, Clock, Navigation, Zap, ArrowUpCircle, Timer, ShieldAlert, BadgeCheck, Minus, Plus, Star, Bird, Medal, Users, ChevronRight, RefreshCw, Radio, History, Calendar } from 'lucide-react';
+import { Trophy, Search, X, Clock, Navigation, Zap, ArrowUpCircle, Timer, ShieldAlert, BadgeCheck, Minus, Plus, Star, Bird, Medal, Users, ChevronRight, RefreshCw, Radio, History, Calendar, AlertTriangle } from 'lucide-react';
 import { SCORING, CAPTURA_LABELS, APP_VERSION } from '../constants.ts';
 import { supabase } from '../supabase.ts';
 
@@ -81,12 +81,20 @@ const PublicView: React.FC<Props> = ({ state }) => {
   const podium = sortedParticipants.slice(0, 3);
 
   const getTechnicalBreakdown = (flight: FlightData) => {
-    const altPts = SCORING.calculateAlturaPoints(flight.alturaServicio);
-    const picPts = SCORING.calculatePicadoPoints(flight.velocidadPicado);
-    const remVal = SCORING.calculateRemontadaValue(flight.alturaServicio, flight.tiempoVuelo);
+    const altPts = SCORING.calculateAlturaPoints(flight.alturaServicio || 0);
+    const picPts = SCORING.calculatePicadoPoints(flight.velocidadPicado || 0);
+    const remVal = SCORING.calculateRemontadaValue(flight.alturaServicio || 0, flight.tiempoVuelo || 0);
     const remPts = SCORING.calculateRemontadaPoints(remVal);
-    const distPts = SCORING.calculateServicioPoints(flight.distanciaServicio);
-    return { altPts, picPts, remPts, distPts };
+    const distPts = SCORING.calculateServicioPoints(flight.distanciaServicio || 0);
+    const capPts = flight.capturaType ? SCORING.calculateCapturaPoints(flight.capturaType, flight.alturaServicio || 0) : 0;
+    const timeBonus = SCORING.calculateTimeBonus(flight.tiempoVuelo || 0);
+    const recBonus = flight['bon recogida'] || 0;
+    const penTotal = (flight.penSenueloEncarnado ? 4 : 0) + 
+                     (flight.penEnsenarSenuelo ? 6 : 0) + 
+                     (flight.penSueltaObligada ? 10 : 0) + 
+                     (flight.penPicado || 0);
+    
+    return { altPts, picPts, remPts, distPts, capPts, timeBonus, recBonus, penTotal };
   };
 
   return (
@@ -254,43 +262,74 @@ const PublicView: React.FC<Props> = ({ state }) => {
 
               <div className="bg-green-50/40 rounded-2xl border border-green-100/50 overflow-hidden">
                 <div className="px-4 py-2 bg-green-100/30 border-b border-green-100/50 flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-field-green">Vuelo Técnico Desglosado</span>
+                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-field-green">Desglose de Puntuación Técnica</span>
                 </div>
                 <div className="p-3 space-y-2">
                   {(() => {
-                    const breakdown = getTechnicalBreakdown(selectedFlight);
+                    const b = getTechnicalBreakdown(selectedFlight);
                     return (
                       <>
-                        <div className="flex justify-between items-center group">
+                        <div className="flex justify-between items-center">
                           <span className="text-[9px] font-bold text-gray-500 uppercase">Puntos por Altura</span>
-                          <span className="text-[10px] font-black text-field-green">+{breakdown.altPts.toFixed(2)}</span>
+                          <span className="text-[10px] font-black text-field-green">+{b.altPts.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-[9px] font-bold text-gray-500 uppercase">Velocidad Picado</span>
-                          <span className="text-[10px] font-black text-field-green">+{breakdown.picPts.toFixed(2)}</span>
+                          <span className="text-[10px] font-black text-field-green">+{b.picPts.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-[9px] font-bold text-gray-500 uppercase">Tasa de Remontada</span>
-                          <span className="text-[10px] font-black text-field-green">+{breakdown.remPts.toFixed(2)}</span>
+                          <span className="text-[10px] font-black text-field-green">+{b.remPts.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-[9px] font-bold text-gray-500 uppercase">Posición Servicio</span>
-                          <span className="text-[10px] font-black text-field-green">+{breakdown.distPts.toFixed(2)}</span>
+                          <span className="text-[10px] font-black text-field-green">+{b.distPts.toFixed(2)}</span>
                         </div>
+                        {b.capPts > 0 && (
+                          <div className="flex justify-between items-center pt-1 border-t border-green-100/50">
+                            <span className="text-[9px] font-bold text-gray-500 uppercase">Puntos por Captura</span>
+                            <span className="text-[10px] font-black text-field-green">+{b.capPts.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {(b.timeBonus > 0 || b.recBonus > 0) && (
+                          <div className="flex justify-between items-center pt-1 border-t border-green-100/50">
+                            <span className="text-[9px] font-bold text-gray-500 uppercase">Bonos (Tiempo/Recogida)</span>
+                            <span className="text-[10px] font-black text-field-green">+{(b.timeBonus + b.recBonus).toFixed(2)}</span>
+                          </div>
+                        )}
+                        {b.penTotal > 0 && (
+                          <div className="flex justify-between items-center pt-1 border-t border-red-100">
+                            <span className="text-[9px] font-bold text-red-400 uppercase">Penalizaciones</span>
+                            <span className="text-[10px] font-black text-red-500">-{b.penTotal.toFixed(2)}</span>
+                          </div>
+                        )}
                       </>
                     );
                   })()}
                 </div>
               </div>
 
+              {Object.values(selectedFlight.disqualifications).some(v => v) && (
+                <div className="bg-red-50 p-4 rounded-2xl border-2 border-red-200 flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-red-600 leading-none">Descalificación Directa</p>
+                    <p className="text-[8px] font-bold text-red-400 uppercase mt-1">Infringimiento grave del reglamento</p>
+                  </div>
+                </div>
+              )}
+
               <div className="pt-2 border-t border-gray-100 text-center space-y-1">
-                 <p className="text-[8px] font-black uppercase text-gray-400 tracking-[0.3em] mb-1">Puntuación Final</p>
+                 <p className="text-[8px] font-black uppercase text-gray-400 tracking-[0.3em] mb-1">Puntuación Final Certificada</p>
                  <p className={`text-4xl font-black tracking-tighter ${selectedFlight.totalPoints === 0 ? 'text-red-500' : 'text-field-green'}`}>
                    {selectedFlight.totalPoints === 0 ? 'DESC.' : selectedFlight.totalPoints.toFixed(2)}
                  </p>
-                 <p className="text-[7px] font-black uppercase text-gray-300 tracking-[0.2em] mt-2 italic flex items-center justify-center gap-2">
-                  <Radio className="w-2.5 h-2.5 animate-pulse text-field-green" /> Sincronizado en Vivo
-                </p>
+                 <div className="flex items-center justify-center gap-2 mt-4">
+                  <div className="px-3 py-1 bg-field-green/5 border border-field-green/10 rounded-full flex items-center gap-2">
+                    <Radio className="w-2.5 h-2.5 animate-pulse text-field-green" />
+                    <span className="text-[7px] font-black uppercase text-field-green tracking-widest">Sincronizado Jueces</span>
+                  </div>
+                </div>
               </div>
             </div>
             <div className="p-4 bg-gray-50 border-t md:hidden">
