@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AppState, FlightData, Championship } from '../types.ts';
 import { Trophy, Search, X, Clock, Navigation, Zap, ArrowUpCircle, Timer, ShieldAlert, BadgeCheck, Minus, Plus, Star, Bird, Medal, Users, ChevronRight, RefreshCw, Radio, History, Calendar, AlertTriangle } from 'lucide-react';
@@ -17,7 +18,10 @@ const PublicView: React.FC<Props> = ({ state }) => {
   );
 
   useEffect(() => {
-    if (!supabase || !state.publicChampionshipId) return;
+    if (!supabase || !state.publicChampionshipId) {
+      setCurrentChamp(null);
+      return;
+    }
 
     const channel = supabase
       .channel('public-results-live')
@@ -28,15 +32,22 @@ const PublicView: React.FC<Props> = ({ state }) => {
         filter: `id=eq.${state.publicChampionshipId}` 
       }, (payload) => {
           setIsSyncing(true);
-          setCurrentChamp(payload.new as Championship);
-          setLastUpdate(new Date());
-          setTimeout(() => setIsSyncing(false), 2000);
+          const updatedChamp = payload.new as Championship;
           
-          if (selectedFlight) {
-            const updatedParticipants = (payload.new as Championship).participants;
-            const updatedFlight = updatedParticipants.find(p => p.id === selectedFlight.id);
-            if (updatedFlight) setSelectedFlight(updatedFlight);
+          // Si el evento ya no es público, lo quitamos de la vista.
+          if (!updatedChamp.isPublic) {
+            setCurrentChamp(null);
+            setSelectedFlight(null);
+          } else {
+            setCurrentChamp(updatedChamp);
+            setLastUpdate(new Date());
+            
+            if (selectedFlight) {
+              const updatedFlight = updatedChamp.participants.find(p => p.id === selectedFlight.id);
+              if (updatedFlight) setSelectedFlight(updatedFlight);
+            }
           }
+          setTimeout(() => setIsSyncing(false), 2000);
       })
       .subscribe();
 
@@ -47,6 +58,8 @@ const PublicView: React.FC<Props> = ({ state }) => {
 
   const handleManualRefresh = () => {
     setIsSyncing(true);
+    // Solo recargamos la página para que la lógica de fetchData en App.tsx vuelva a correr.
+    // Esto respetará el estado actual de Supabase sin inventar eventos.
     setTimeout(() => {
       window.location.reload();
     }, 300);
@@ -59,7 +72,7 @@ const PublicView: React.FC<Props> = ({ state }) => {
     return `${mins} min ${secs}s`;
   };
 
-  if (!currentChamp) {
+  if (!currentChamp || !currentChamp.isPublic) {
     return (
       <div className="text-center py-24 animate-pulse px-4">
         <div className="bg-gray-100 w-20 h-20 rounded-[32px] flex items-center justify-center mx-auto mb-8 rotate-12">

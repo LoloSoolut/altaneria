@@ -92,6 +92,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
   const togglePublic = async (id: string) => {
     if (!supabase) return;
     setSyncing(true);
+    setLastError(null);
     
     try {
       const targetChamp = state.championships.find(c => c.id === id);
@@ -100,10 +101,18 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
       const newPublicStatus = !targetChamp.isPublic;
       const now = Date.now();
 
-      await supabase.from('championships').update({ isPublic: false }).neq('id', 'dummy-id');
+      // PRIMERO: Grabamos en Supabase que NINGÚN evento es público (limpieza total)
+      // Usamos un filtro dummy para afectar a todos los registros
+      const { error: resetError } = await supabase
+        .from('championships')
+        .update({ isPublic: false })
+        .neq('id', '00000000-0000-0000-0000-000000000000'); 
 
+      if (resetError) throw resetError;
+
+      // SEGUNDO: Si el usuario quería ACTIVAR, activamos solo el seleccionado
       if (newPublicStatus) {
-        const { error } = await supabase
+        const { error: updateError } = await supabase
           .from('championships')
           .update({ 
             isPublic: true, 
@@ -111,9 +120,10 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
           })
           .eq('id', id);
         
-        if (error) throw error;
+        if (updateError) throw updateError;
       }
 
+      // Actualizamos el estado local para reflejar el cambio inmediato
       const updatedChamps = state.championships.map(c => ({
         ...c,
         isPublic: c.id === id ? newPublicStatus : false,
@@ -126,8 +136,8 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
       });
 
     } catch (e: any) {
-      console.error("Error al publicar:", e.message);
-      setLastError("Error de red al publicar");
+      console.error("Error al gestionar visibilidad:", e.message);
+      setLastError("Error al grabar estado de visibilidad");
     } finally {
       setSyncing(false);
     }
@@ -152,7 +162,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
     const updatedChamps = state.championships.filter(c => c.id !== id);
     onUpdateState({ 
       championships: updatedChamps,
-      selectedChampionshipId: state.selectedChampionshipId === id ? (updatedChamps[0]?.id || null) : state.selectedChampionshipId 
+      selectedChampionshipId: state.selectedChampionshipId === id ? null : state.selectedChampionshipId 
     });
     if (supabase) await supabase.from('championships').delete().eq('id', id);
   };
@@ -251,7 +261,6 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Sync Status Bar */}
       <div className={`mx-auto max-w-5xl px-5 py-2.5 rounded-full flex items-center justify-between transition-all shadow-sm ${!supabase ? 'bg-orange-50 text-orange-600' : lastError ? 'bg-red-50 text-red-600' : 'bg-green-50 text-field-green border border-green-100'}`}>
         <div className="flex items-center gap-2">
           {syncing ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Cloud className="w-3 h-3" />}
@@ -261,11 +270,7 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
       </div>
 
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-6 px-2">
-        
-        {/* Main Content Area */}
         <div className="flex-grow space-y-6">
-          
-          {/* Header Card */}
           <div className="bg-white p-6 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-professional flex flex-col md:flex-row justify-between items-center border border-gray-100 gap-6">
             <div className="flex items-center gap-4 lg:gap-6 w-full md:w-auto">
               <div className="w-14 h-14 lg:w-16 lg:h-16 bg-field-green/10 rounded-2xl flex items-center justify-center shrink-0">
@@ -386,7 +391,6 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
           )}
         </div>
 
-        {/* Sidebar History (Desktop) */}
         <aside className="hidden lg:block w-80 shrink-0 space-y-6">
           <div className="bg-white p-8 rounded-[32px] shadow-professional border border-gray-100 sticky top-32">
             <h3 className="font-black text-[10px] uppercase tracking-widest mb-6 text-gray-400 flex items-center justify-between border-b pb-4">
@@ -397,7 +401,6 @@ const JudgePanel: React.FC<Props> = ({ state, onUpdateState }) => {
           </div>
         </aside>
 
-        {/* Mobile History Modal */}
         {isHistoryModalOpen && (
           <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-end justify-center animate-in fade-in duration-300">
             <div className="bg-white w-full rounded-t-[32px] p-6 pb-10 max-h-[90vh] flex flex-col animate-in slide-in-from-bottom-6 overflow-hidden">

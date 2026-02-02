@@ -41,38 +41,23 @@ const App: React.FC = () => {
         .order('createdAt', { ascending: false });
 
       if (!error && championships) {
-        const publicChamps = championships.filter(c => c.isPublic === true);
-        let correctedChampionships = [...championships];
-        let finalPublicId: string | null = null;
+        // Encontrar el evento que está marcado como público
+        const publicChamp = championships.find(c => c.isPublic === true);
+        const finalPublicId = publicChamp?.id || null;
 
-        if (publicChamps.length > 1) {
-          const winner = publicChamps.sort((a, b) => {
-            const timeA = a.publishedAt || a.createdAt || 0;
-            const timeB = b.publishedAt || b.createdAt || 0;
-            return Number(timeB) - Number(timeA);
-          })[0];
+        setState(prev => {
+          // Si es la carga inicial (no hay campeonatos en el estado previo)
+          const isInitialLoad = prev.championships.length === 0;
           
-          finalPublicId = winner.id;
-          correctedChampionships = championships.map(c => ({
-            ...c,
-            isPublic: c.id === winner.id
-          }));
-
-          await supabase.from('championships')
-            .update({ isPublic: false })
-            .neq('id', winner.id);
-        } else {
-          finalPublicId = publicChamps[0]?.id || null;
-        }
-
-        setState(prev => ({
-          ...prev,
-          championships: correctedChampionships,
-          // MODIFICACIÓN: Si no hay selección previa, cargar el PUBLICO. 
-          // Si no hay PUBLICO, dejar en NULL (no cargar el primero de la lista).
-          selectedChampionshipId: prev.selectedChampionshipId || finalPublicId,
-          publicChampionshipId: finalPublicId
-        }));
+          return {
+            ...prev,
+            championships: championships,
+            // Solo autoseleccionamos si es la carga inicial y hay uno público.
+            // Si no hay público, se queda en null para obligar a seleccionar desde Control Técnico.
+            selectedChampionshipId: isInitialLoad ? finalPublicId : prev.selectedChampionshipId,
+            publicChampionshipId: finalPublicId
+          };
+        });
       }
     } catch (e) {
       console.error("Error en fetchData:", e);
@@ -140,7 +125,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#fcfcf9]">
-      {/* Header Desktop & Mobile Wrapper */}
       <header className="bg-field-green text-white py-4 lg:py-6 shadow-xl border-b-[4px] border-falcon-brown sticky top-0 z-[100] transition-all">
         <div className="container mx-auto px-4 flex justify-between items-center">
           <div className="flex items-center gap-3 cursor-pointer group" onClick={() => setView('home')}>
@@ -153,14 +137,12 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Desktop Navigation */}
           <nav className="hidden md:flex bg-black/10 p-1.5 rounded-2xl backdrop-blur-md gap-1">
             <NavButton target="home" icon={Home} label="Inicio" />
             <NavButton target="public" icon={Users} label="Público" badge={!!activePublicChamp} />
             <NavButton target="judge" icon={Gavel} label="Jurado" />
           </nav>
 
-          {/* Mobile Menu Toggle */}
           <button 
             className="md:hidden p-2 rounded-xl bg-white/10"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -169,7 +151,6 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Mobile Dropdown Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-full left-0 right-0 bg-field-green border-t border-white/10 p-4 space-y-2 animate-in slide-in-from-top-2 shadow-2xl">
             <button onClick={() => { setView('home'); setIsMobileMenuOpen(false); }} className="w-full flex items-center gap-4 p-4 rounded-2xl bg-white/5 text-white font-black uppercase text-xs">
@@ -188,7 +169,6 @@ const App: React.FC = () => {
       <main className="flex-grow container mx-auto px-4 py-6 pb-24 lg:pb-8">
         {view === 'home' && (
           <div className="max-w-5xl mx-auto space-y-8 lg:space-y-16 animate-in fade-in duration-700">
-            {/* Hero Section */}
             <div className="relative group overflow-hidden rounded-[32px] lg:rounded-[48px] shadow-2xl bg-white border-4 lg:border-8 border-white">
               <div className="relative h-[450px] lg:h-[650px] overflow-hidden">
                 <img 
@@ -228,7 +208,6 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Feature Cards */}
             <div className="grid md:grid-cols-2 gap-6 lg:gap-10">
               <div className="bg-white p-8 lg:p-12 rounded-[32px] lg:rounded-[48px] shadow-professional border border-gray-100 hover:border-field-green transition-all duration-500 cursor-pointer group relative overflow-hidden" onClick={() => setView('public')}>
                 <div className="absolute -right-6 -bottom-6 opacity-5 group-hover:opacity-10 transition-opacity">
@@ -289,7 +268,6 @@ const App: React.FC = () => {
         {view === 'judge' && isAuth && (
           <div className="space-y-8">
             <JudgePanel state={state} onUpdateState={updateState} />
-            {/* Assistant Integrated into Judge Area */}
             <div className="max-w-4xl mx-auto">
               <TechnicalAssistant />
             </div>
@@ -305,7 +283,6 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Mobile Bottom Navigation */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex justify-around items-center z-[110] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
         <button onClick={() => setView('home')} className={`flex flex-col items-center gap-1 transition-all ${view === 'home' ? 'text-field-green scale-110' : 'text-gray-400'}`}>
           <Home className="w-6 h-6" />
