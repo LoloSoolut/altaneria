@@ -132,11 +132,18 @@ const PublicView: React.FC<Props> = ({ state }) => {
         <RefreshCw className={`w-6 h-6 transition-transform duration-500 group-hover:rotate-180 ${isSyncing ? 'animate-spin' : ''}`} />
       </button>
 
-      <div className="flex justify-center items-center gap-2 mb-2">
+      <div className="flex flex-col items-center gap-2 mb-2">
         <div className={`px-4 py-1.5 rounded-full flex items-center gap-2 text-[8px] font-black uppercase tracking-[0.2em] shadow-sm transition-all duration-500 ${isSyncing ? 'bg-field-green text-white scale-105' : 'bg-white text-gray-400'}`}>
           <Radio className={`w-3 h-3 ${isSyncing ? 'animate-pulse' : 'text-field-green animate-pulse'}`} />
           {isSyncing ? 'Actualizando Datos...' : `Sincronizado: ${lastUpdate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}`}
         </div>
+        
+        {currentChamp.publishedAt && (
+          <div className="px-4 py-1.5 rounded-full bg-falcon-brown/5 text-falcon-brown/70 flex items-center gap-2 text-[7px] font-black uppercase tracking-[0.2em] border border-falcon-brown/10 animate-in fade-in duration-1000">
+            <Calendar className="w-2.5 h-2.5" />
+            Resultados Públicos desde: {new Date(currentChamp.publishedAt).toLocaleDateString('es-ES')} a las {new Date(currentChamp.publishedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        )}
       </div>
 
       <div className="text-center space-y-2 px-4">
