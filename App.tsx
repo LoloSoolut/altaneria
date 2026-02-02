@@ -3,14 +3,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Championship, AppState } from './types.ts';
 import JudgePanel from './components/JudgePanel.tsx';
 import PublicView from './components/PublicView.tsx';
-import TechnicalAssistant from './components/TechnicalAssistant.tsx';
 import { supabase } from './supabase.ts';
-import { Trophy, Gavel, Users, ShieldCheck, Bird, Radio, ChevronRight, Home, MessageSquare, Menu, X } from 'lucide-react';
+import { Trophy, Gavel, Users, ShieldCheck, Bird, Radio, ChevronRight, Home, Menu, X } from 'lucide-react';
 import { APP_VERSION } from './constants.ts';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'home' | 'judge' | 'public' | 'assistant'>(() => {
+  const [view, setView] = useState<'home' | 'judge' | 'public'>(() => {
     const savedView = localStorage.getItem('altaneria_current_view');
+    if (savedView === 'assistant') return 'home';
     return (savedView as any) || 'home';
   });
   
@@ -41,19 +41,14 @@ const App: React.FC = () => {
         .order('createdAt', { ascending: false });
 
       if (!error && championships) {
-        // Encontrar el evento que está marcado como público
         const publicChamp = championships.find(c => c.isPublic === true);
         const finalPublicId = publicChamp?.id || null;
 
         setState(prev => {
-          // Si es la carga inicial (no hay campeonatos en el estado previo)
           const isInitialLoad = prev.championships.length === 0;
-          
           return {
             ...prev,
             championships: championships,
-            // Solo autoseleccionamos si es la carga inicial y hay uno público.
-            // Si no hay público, se queda en null para obligar a seleccionar desde Control Técnico.
             selectedChampionshipId: isInitialLoad ? finalPublicId : prev.selectedChampionshipId,
             publicChampionshipId: finalPublicId
           };
@@ -268,19 +263,10 @@ const App: React.FC = () => {
         {view === 'judge' && isAuth && (
           <div className="space-y-8">
             <JudgePanel state={state} onUpdateState={updateState} />
-            <div className="max-w-4xl mx-auto">
-              <TechnicalAssistant />
-            </div>
           </div>
         )}
         
         {view === 'public' && <PublicView state={state} />}
-        
-        {view === 'assistant' && (
-          <div className="max-w-3xl mx-auto py-6">
-            <TechnicalAssistant />
-          </div>
-        )}
       </main>
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-3 flex justify-around items-center z-[110] shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
@@ -296,10 +282,6 @@ const App: React.FC = () => {
         <button onClick={() => setView('judge')} className={`flex flex-col items-center gap-1 transition-all ${view === 'judge' ? 'text-field-green scale-110' : 'text-gray-400'}`}>
           <Gavel className="w-6 h-6" />
           <span className="text-[9px] font-black uppercase">Jurado</span>
-        </button>
-        <button onClick={() => setView('assistant')} className={`flex flex-col items-center gap-1 transition-all ${view === 'assistant' ? 'text-field-green scale-110' : 'text-gray-400'}`}>
-          <MessageSquare className="w-6 h-6" />
-          <span className="text-[9px] font-black uppercase">IA</span>
         </button>
       </div>
 

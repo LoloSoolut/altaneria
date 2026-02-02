@@ -1,3 +1,4 @@
+
 export interface FlightData {
   id: string;
   falconName: string;
