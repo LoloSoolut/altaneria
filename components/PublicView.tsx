@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppState, FlightData, Championship } from '../types.ts';
-import { Trophy, Search, X, Clock, Navigation, Zap, ArrowUpCircle, Timer, ShieldAlert, BadgeCheck, Minus, Plus, Star, Bird, Medal, Users, ChevronRight, RefreshCw, Radio, History, Calendar, AlertTriangle } from 'lucide-react';
+import { AppState, FlightData, Championship, CapturaType } from '../types.ts';
+import { Trophy, Search, X, Clock, Navigation, Zap, ArrowUpCircle, Timer, ShieldAlert, BadgeCheck, Minus, Plus, Star, Bird, Medal, Users, ChevronRight, RefreshCw, Radio, History, Calendar, AlertTriangle, MapPin } from 'lucide-react';
 import { SCORING, CAPTURA_LABELS, APP_VERSION } from '../constants.ts';
 import { supabase } from '../supabase.ts';
 
@@ -34,7 +34,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
           setIsSyncing(true);
           const updatedChamp = payload.new as Championship;
           
-          // Si el evento ya no es público, lo quitamos de la vista.
           if (!updatedChamp.isPublic) {
             setCurrentChamp(null);
             setSelectedFlight(null);
@@ -58,8 +57,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
 
   const handleManualRefresh = () => {
     setIsSyncing(true);
-    // Solo recargamos la página para que la lógica de fetchData en App.tsx vuelva a correr.
-    // Esto respetará el estado actual de Supabase sin inventar eventos.
     setTimeout(() => {
       window.location.reload();
     }, 300);
@@ -102,12 +99,26 @@ const PublicView: React.FC<Props> = ({ state }) => {
     const capPts = flight.capturaType ? SCORING.calculateCapturaPoints(flight.capturaType, flight.alturaServicio || 0) : 0;
     const timeBonus = SCORING.calculateTimeBonus(flight.tiempoVuelo || 0);
     const recBonus = flight['bon recogida'] || 0;
-    const penTotal = (flight.penSenueloEncarnado ? 4 : 0) + 
-                     (flight.penEnsenarSenuelo ? 6 : 0) + 
-                     (flight.penSueltaObligada ? 10 : 0) + 
-                     (flight.penPicado || 0);
     
-    return { altPts, picPts, remPts, distPts, capPts, timeBonus, recBonus, penTotal };
+    // Penalizaciones detalladas
+    const pens = {
+      senuelo: flight.penSenueloEncarnado ? 4 : 0,
+      ensenar: flight.penEnsenarSenuelo ? 6 : 0,
+      suelta: flight.penSueltaObligada ? 10 : 0,
+      picado: flight.penPicado || 0
+    };
+    const penTotal = pens.senuelo + pens.ensenar + pens.suelta + pens.picado;
+    
+    return { altPts, picPts, remPts, distPts, capPts, timeBonus, recBonus, pens, penTotal };
+  };
+
+  const getDisqualificationReasons = (flight: FlightData) => {
+    const reasons: string[] = [];
+    if (flight.disqualifications.superar10min) reasons.push("Superar 10 min sin recoger");
+    if (flight.disqualifications.ensenarVivos) reasons.push("Enseñar señuelos vivos");
+    if (flight.disqualifications.conductaAntideportiva) reasons.push("Conducta antideportiva");
+    if (flight.disqualifications.noComparecer) reasons.push("No comparecer");
+    return reasons;
   };
 
   return (
@@ -135,29 +146,6 @@ const PublicView: React.FC<Props> = ({ state }) => {
           <span className="flex items-center gap-1"><Clock className="w-3 h-3 text-field-green" /> {currentChamp.date}</span>
         </div>
       </div>
-
-      {currentChamp.publishedAt && (
-        <div className="mx-1 bg-white border-2 border-field-green/30 rounded-[28px] p-5 flex items-center justify-between shadow-lg shadow-green-900/5 animate-in zoom-in-95 duration-500">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-field-green rounded-2xl flex items-center justify-center text-white shadow-md">
-              <Calendar className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-field-green leading-none mb-1">Certificación de Resultados</p>
-              <h3 className="text-sm font-black text-gray-800 uppercase tracking-tighter text-wrap max-w-[150px] leading-tight">Publicación Oficial de Resultados</h3>
-            </div>
-          </div>
-          <div className="text-right border-l pl-5 border-gray-100 flex flex-col justify-center">
-            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Fecha y Hora</p>
-            <p className="text-[10px] font-black text-gray-500 tracking-tight uppercase">
-              {new Date(currentChamp.publishedAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-            </p>
-            <p className="text-xl font-black text-gray-900 tracking-tighter leading-none mt-1">
-              {new Date(currentChamp.publishedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-            </p>
-          </div>
-        </div>
-      )}
 
       {podium.length > 0 && (
         <div className="flex items-end justify-center gap-1 sm:gap-3 px-2 py-6">
@@ -188,16 +176,7 @@ const PublicView: React.FC<Props> = ({ state }) => {
 
       <div className="bg-white rounded-[28px] shadow-professional border border-gray-100 overflow-hidden mx-1">
         <div className="bg-gray-50/80 px-4 py-3 border-b flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Clasificación General</span>
-            {isSyncing && <RefreshCw className="w-2.5 h-2.5 text-field-green animate-spin" />}
-          </div>
-          <button 
-            onClick={handleManualRefresh}
-            className="flex items-center gap-1 px-2 py-1 bg-white border rounded-lg text-[7px] font-black uppercase text-field-green hover:bg-field-green hover:text-white transition-all shadow-sm"
-          >
-            <RefreshCw className="w-2.5 h-2.5" /> Actualizar
-          </button>
+          <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">Clasificación General</span>
         </div>
         
         <div className="divide-y divide-gray-50">
@@ -233,87 +212,123 @@ const PublicView: React.FC<Props> = ({ state }) => {
 
       {selectedFlight && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-[340px] rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 relative flex flex-col max-h-[85vh]">
+          <div className="bg-white w-full max-w-[350px] rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 relative flex flex-col max-h-[90vh]">
             <div className="bg-field-green px-6 py-5 text-white flex justify-between items-center shrink-0">
               <div className="min-w-0">
                 <span className="text-[7px] uppercase font-black tracking-widest text-white/50 block mb-0.5">Acta de Vuelo Oficial v{APP_VERSION}</span>
                 <h3 className="text-base font-black leading-none uppercase truncate">{selectedFlight.falconerName}</h3>
               </div>
-              <button onClick={() => setSelectedFlight(null)} className="w-8 h-8 flex items-center justify-center bg-black/20 hover:bg-white hover:text-field-green rounded-lg transition-all text-white active:scale-90">
+              <button onClick={() => setSelectedFlight(null)} className="w-8 h-8 flex items-center justify-center bg-white/10 hover:bg-white hover:text-field-green rounded-lg transition-all text-white active:scale-90">
                 <X className="w-4 h-4" />
               </button>
             </div>
             
-            <div className="p-5 space-y-5 overflow-y-auto no-scrollbar">
-              <div className="grid grid-cols-3 gap-1.5">
-                <div className="bg-gray-50 p-2.5 rounded-xl text-center border border-gray-100">
+            <div className="p-5 space-y-4 overflow-y-auto no-scrollbar">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 text-center">
                   <ArrowUpCircle className="w-3 h-3 mx-auto text-field-green mb-1" />
                   <p className="text-[7px] uppercase font-black text-gray-400">Altura</p>
                   <p className="text-xs font-black text-gray-800">{selectedFlight.alturaServicio}m</p>
                 </div>
-                <div className="bg-gray-50 p-2.5 rounded-xl text-center border border-gray-100">
+                <div className="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 text-center">
                   <Timer className="w-3 h-3 mx-auto text-field-green mb-1" />
                   <p className="text-[7px] uppercase font-black text-gray-400">T. Remontada</p>
                   <p className="text-xs font-black text-gray-800 truncate">{formatTime(selectedFlight.tiempoVuelo)}</p>
                 </div>
-                <div className="bg-gray-50 p-2.5 rounded-xl text-center border border-gray-100">
+                <div className="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 text-center">
                   <Zap className="w-3 h-3 mx-auto text-field-green mb-1" />
                   <p className="text-[7px] uppercase font-black text-gray-400">Picado</p>
                   <p className="text-xs font-black text-gray-800">{selectedFlight.velocidadPicado}k</p>
                 </div>
+                <div className="bg-gray-50 p-2.5 rounded-2xl border border-gray-100 text-center">
+                  <MapPin className="w-3 h-3 mx-auto text-field-green mb-1" />
+                  <p className="text-[7px] uppercase font-black text-gray-400">Pos. Servicio</p>
+                  <p className="text-xs font-black text-gray-800">{selectedFlight.distanciaServicio}m</p>
+                </div>
               </div>
 
-              {selectedFlight.duracionTotalVuelo > 0 && (
-                <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <History className="w-4 h-4 text-gray-400" />
-                    <span className="text-[8px] font-black uppercase text-gray-500 tracking-wider">Duración total del Vuelo</span>
-                  </div>
-                  <span className="text-[10px] font-black text-gray-800">{formatTime(selectedFlight.duracionTotalVuelo)}</span>
-                </div>
-              )}
-
               <div className="bg-green-50/40 rounded-2xl border border-green-100/50 overflow-hidden">
-                <div className="px-4 py-2 bg-green-100/30 border-b border-green-100/50 flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-field-green">Desglose de Puntuación Técnica</span>
+                <div className="px-4 py-2 bg-green-100/30 border-b border-green-100/50">
+                  <span className="text-[8px] font-black uppercase tracking-[0.2em] text-field-green">Desglose Técnico Detallado</span>
                 </div>
                 <div className="p-3 space-y-2">
                   {(() => {
                     const b = getTechnicalBreakdown(selectedFlight);
                     return (
                       <>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-bold text-gray-500 uppercase">Puntos por Altura</span>
-                          <span className="text-[10px] font-black text-field-green">+{b.altPts.toFixed(2)}</span>
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="font-bold text-gray-500 uppercase">Altura de Vuelo</span>
+                          <span className="font-black text-field-green">+{b.altPts.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-bold text-gray-500 uppercase">Velocidad Picado</span>
-                          <span className="text-[10px] font-black text-field-green">+{b.picPts.toFixed(2)}</span>
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="font-bold text-gray-500 uppercase">Velocidad Picado</span>
+                          <span className="font-black text-field-green">+{b.picPts.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-bold text-gray-500 uppercase">Tasa de Remontada</span>
-                          <span className="text-[10px] font-black text-field-green">+{b.remPts.toFixed(2)}</span>
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="font-bold text-gray-500 uppercase">Tasa de Remontada</span>
+                          <span className="font-black text-field-green">+{b.remPts.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] font-bold text-gray-500 uppercase">Posición Servicio</span>
-                          <span className="text-[10px] font-black text-field-green">+{b.distPts.toFixed(2)}</span>
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="font-bold text-gray-500 uppercase">Posición Servicio</span>
+                          <span className="font-black text-field-green">+{b.distPts.toFixed(2)}</span>
                         </div>
+                        
+                        {/* Detalle Captura */}
                         {b.capPts > 0 && (
-                          <div className="flex justify-between items-center pt-1 border-t border-green-100/50">
-                            <span className="text-[9px] font-bold text-gray-500 uppercase">Puntos por Captura</span>
-                            <span className="text-[10px] font-black text-field-green">+{b.capPts.toFixed(2)}</span>
+                          <div className="pt-1 border-t border-green-100/50 space-y-1">
+                            <div className="flex justify-between items-center text-[10px]">
+                              <span className="font-bold text-gray-500 uppercase">Captura ({CAPTURA_LABELS[selectedFlight.capturaType!]})</span>
+                              <span className="font-black text-field-green">+{b.capPts.toFixed(2)}</span>
+                            </div>
                           </div>
                         )}
+
+                        {/* Detalle Bonificaciones */}
                         {(b.timeBonus > 0 || b.recBonus > 0) && (
-                          <div className="flex justify-between items-center pt-1 border-t border-green-100/50">
-                            <span className="text-[9px] font-bold text-gray-500 uppercase">Bonos (Tiempo/Recogida)</span>
-                            <span className="text-[10px] font-black text-field-green">+{(b.timeBonus + b.recBonus).toFixed(2)}</span>
+                          <div className="pt-1 border-t border-green-100/50 space-y-1">
+                            {b.timeBonus > 0 && (
+                              <div className="flex justify-between items-center text-[9px]">
+                                <span className="font-medium text-gray-400 uppercase italic">Bono por tiempo de vuelo</span>
+                                <span className="font-black text-field-green">+{b.timeBonus.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {b.recBonus > 0 && (
+                              <div className="flex justify-between items-center text-[9px]">
+                                <span className="font-medium text-gray-400 uppercase italic">Bono por recogida limpia</span>
+                                <span className="font-black text-field-green">+{b.recBonus.toFixed(2)}</span>
+                              </div>
+                            )}
                           </div>
                         )}
+
+                        {/* Detalle Penalizaciones */}
                         {b.penTotal > 0 && (
-                          <div className="flex justify-between items-center pt-1 border-t border-red-100">
-                            <span className="text-[9px] font-bold text-red-400 uppercase">Penalizaciones</span>
-                            <span className="text-[10px] font-black text-red-500">-{b.penTotal.toFixed(2)}</span>
+                          <div className="pt-1 border-t border-red-100 space-y-1">
+                            <span className="text-[8px] font-black uppercase text-red-300 block mb-1">Penalizaciones Aplicadas</span>
+                            {b.pens.senuelo > 0 && (
+                              <div className="flex justify-between items-center text-[9px]">
+                                <span className="font-medium text-red-400 uppercase italic">Señuelo encarnado</span>
+                                <span className="font-black text-red-500">-{b.pens.senuelo.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {b.pens.ensenar > 0 && (
+                              <div className="flex justify-between items-center text-[9px]">
+                                <span className="font-medium text-red-400 uppercase italic">Enseñar señuelo</span>
+                                <span className="font-black text-red-500">-{b.pens.ensenar.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {b.pens.suelta > 0 && (
+                              <div className="flex justify-between items-center text-[9px]">
+                                <span className="font-medium text-red-400 uppercase italic">Suelta obligada</span>
+                                <span className="font-black text-red-500">-{b.pens.suelta.toFixed(2)}</span>
+                              </div>
+                            )}
+                            {b.pens.picado > 0 && (
+                              <div className="flex justify-between items-center text-[9px]">
+                                <span className="font-medium text-red-400 uppercase italic">Calidad/Estilo picado</span>
+                                <span className="font-black text-red-500">-{b.pens.picado.toFixed(2)}</span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </>
@@ -322,30 +337,35 @@ const PublicView: React.FC<Props> = ({ state }) => {
                 </div>
               </div>
 
+              {/* Detalle Descalificación */}
               {Object.values(selectedFlight.disqualifications).some(v => v) && (
-                <div className="bg-red-50 p-4 rounded-2xl border-2 border-red-200 flex items-center gap-3">
-                  <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-red-600 leading-none">Descalificación Directa</p>
-                    <p className="text-[8px] font-bold text-red-400 uppercase mt-1">Infringimiento grave del reglamento</p>
+                <div className="bg-red-50 p-4 rounded-2xl border-2 border-red-200 space-y-3">
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-red-600 leading-none">Descalificación Directa</p>
+                      <p className="text-[8px] font-bold text-red-400 uppercase mt-1 italic">Infringimiento grave del reglamento</p>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-red-100 flex flex-wrap gap-1.5">
+                    {getDisqualificationReasons(selectedFlight).map((reason, idx) => (
+                      <span key={idx} className="bg-red-600 text-white text-[7px] font-black uppercase px-2 py-1 rounded-md">
+                        {reason}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}
 
-              <div className="pt-2 border-t border-gray-100 text-center space-y-1">
+              <div className="pt-2 text-center">
                  <p className="text-[8px] font-black uppercase text-gray-400 tracking-[0.3em] mb-1">Puntuación Final Certificada</p>
                  <p className={`text-4xl font-black tracking-tighter ${selectedFlight.totalPoints === 0 ? 'text-red-500' : 'text-field-green'}`}>
                    {selectedFlight.totalPoints === 0 ? 'DESC.' : selectedFlight.totalPoints.toFixed(2)}
                  </p>
-                 <div className="flex items-center justify-center gap-2 mt-4">
-                  <div className="px-3 py-1 bg-field-green/5 border border-field-green/10 rounded-full flex items-center gap-2">
-                    <Radio className="w-2.5 h-2.5 animate-pulse text-field-green" />
-                    <span className="text-[7px] font-black uppercase text-field-green tracking-widest">Sincronizado Jueces</span>
-                  </div>
-                </div>
               </div>
             </div>
-            <div className="p-4 bg-gray-50 border-t md:hidden">
+            
+            <div className="p-4 bg-gray-50 border-t">
                <button onClick={() => setSelectedFlight(null)} className="w-full py-3 bg-white border border-gray-200 rounded-xl font-black uppercase text-[9px] tracking-widest text-gray-500 active:bg-gray-100 transition-colors">
                   Cerrar Acta
                </button>
